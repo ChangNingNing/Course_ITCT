@@ -2,8 +2,12 @@
 
 /* decode.c */
 #include <stdint.h>
+#include <string.h>
+#include "bmp.h"
+//#include <math.h>
 
-#define MAXS (1<<20)
+#define MAXL (1<<10)
+#define MAXS (MAXL*MAXL)
 #define BLOCKS 64
 
 uint16_t P, Y, X, Nf, Hmax = 0, Vmax = 0;
@@ -11,6 +15,8 @@ int DCP[4];
 uint16_t QT[4][BLOCKS];
 uint8_t F[4][5]; //0: H, 1: V, 2: QT_ID, 3: DC_ID, 4: AC_ID.
 uint16_t HT[2][2][1<<16]; // 0: DC, 1: AC;
+
+uint8_t BGR[MAXL*MAXL][3];
 
 void Decode_APP(char **buff, int *readSz){
 	uint8_t *tmp = *buff;
@@ -242,43 +248,236 @@ uint16_t Decode_SOS_MCU_Block_Bits(char **buff, int *readSz, int *rest, uint8_t 
 	return DIFF;
 }
 
-void Decode_SOS_MCU_Block(char **buff, int *readSz, int *rest, int16_t Block[BLOCKS], int fID, int ht_dc_id, int ht_ac_id){
-printf("DC Predictot: %d\n", DCP[fID]);
-printf("DC:\n");
-	uint8_t S = Decode_SOS_MCU_Block_Huffman(buff, readSz, rest, 0, ht_dc_id);
-printf("    T: %d", S);
+void Decode_SOS_MCU_Block_Dequantize(int16_t Block[BLOCKS], int fID){
+	int QT_ID = F[fID][2];
+	for (int i=0; i<BLOCKS; i++)
+		Block[i] *= QT[QT_ID][i];
+
+	/*
+	// Debug
+	for (int i=0; i<BLOCKS; i++)
+		printf("%d ", Block[i]);
+	puts("");
+	*/
+}
+
+void Decode_SOS_MCU_Block_Zigzag(int16_t Block[BLOCKS]){
+	static const uint8_t _T[BLOCKS] = {
+		0,	1,	5,	6,	14,	15,	27,	28,
+		2,	4,	7,	13,	16,	26,	29,	42,
+		3,	8,	12,	17,	25,	30,	41,	43,
+		9,	11,	18,	24,	31,	40,	44,	53,
+		10,	19,	23,	32,	39,	45,	52,	54,
+		20,	22,	33,	38,	46,	51,	55,	60,
+		21,	34,	37,	47,	50,	56,	59,	61,
+		35,	36,	48,	49,	57,	58,	62,	63
+	};
+
+	int16_t tmp[BLOCKS];
+	memcpy(tmp, Block, sizeof(int16_t)*BLOCKS);
+	for (int i=0; i<BLOCKS; i++)
+		Block[i] = tmp[_T[i]];
+
+	/*
+	// Debug
+	for (int i=0; i<8; i++, puts(""))
+		for (int j=0; j<8; j++)
+			printf("%6d", Block[i*8+j]);
+	*/
+}
+
+void Decode_SOS_MCU_Block_IDCT(int16_t Block[BLOCKS]){
+
+	static const double cosT[BLOCKS] = {
+	1.000000000000,	0.980785280403,	0.923879532511,	0.831469612303,	0.707106781187,	0.555570233020,	0.382683432365,	0.195090322016,
+	1.000000000000,	0.831469612303,	0.382683432365,	-0.195090322016,-0.707106781187,-0.980785280403,-0.923879532511,-0.555570233019,
+	1.000000000000,	0.555570233020,	-0.382683432365,-0.980785280403,-0.707106781186,0.195090322016,	0.923879532511,	0.831469612302,
+	1.000000000000,	0.195090322016,	-0.923879532511,-0.555570233019,0.707106781187,	0.831469612302,	-0.382683432366,-0.980785280403,
+	1.000000000000,	-0.195090322016,-0.923879532511,0.555570233020,	0.707106781186,	-0.831469612303,-0.382683432364,0.980785280403,
+	1.000000000000,	-0.555570233020,-0.382683432365,0.980785280403,	-0.707106781187,-0.195090322015,0.923879532511,	-0.831469612303,
+	1.000000000000,	-0.831469612303,0.382683432365,	0.195090322016,	-0.707106781186,0.980785280403,	-0.923879532512,0.555570233021,
+	1.000000000000,	-0.980785280403,0.923879532511,	-0.831469612303,0.707106781187,	-0.555570233020,0.382683432366,	-0.195090322017
+	};
+	static const double C[8] = {
+	0.7071067811865475,	1,	1,	1,	1,	1,	1,	1
+	};
+
+/*
+	double cosT[BLOCKS], C[8];
+#define PI 3.14159265359
+	for (int i=0; i<8; i++)
+		for (int j=0; j<8; j++)
+			cosT[i*8 + j] = cos((2*i+1)*j*PI / 16);
+	for (int i=0; i<8; i++, puts(""))
+		for (int j=0; j<8; j++)
+			printf("%.12f, ", cosT[i*8 + j]);
+	for (int i=0; i<8; i++){
+		if (i==0)
+			C[i] = 0.7071067811865475;
+		else
+			C[i] = 1;
+	}
+#undef PI
+*/
+
+	int16_t tmp[BLOCKS];
+	memcpy(tmp, Block, sizeof(int16_t)*BLOCKS);
+
+	for (int i=0; i<8; i++){
+		for (int j=0; j<8; j++){
+			double sum = 0;
+			for (int u=0; u<8; u++){
+				for (int v=0; v<8; v++){
+					sum += C[u]*C[v]*tmp[u*8+v]*cosT[i*8+u]*cosT[j*8+v];
+				}
+			}
+			Block[i*8+j] = sum / 4;
+		}
+	}
+	/*
+	// Debug
+	for (int i=0; i<8; i++, puts(""))
+		for (int j=0; j<8; j++)
+			printf("%6d", Block[i*8+j]);
+	*/
+
+	/* level shift (+128) */
+	for (int i=0; i<BLOCKS; i++)
+		Block[i] += 128;
+
+	/*
+	// Debug
+	for (int i=0; i<8; i++, puts(""))
+		for (int j=0; j<8; j++)
+			printf("%6d", Block[i*8+j]);
+	*/
+}
+
+void Decode_SOS_MCU_Block(char **buff, int *readSz, int *rest, int16_t Block[BLOCKS], int fID){
+//printf("DC Predictot: %d\n", DCP[fID]);
+//printf("DC:\n");
+	uint8_t S = Decode_SOS_MCU_Block_Huffman(buff, readSz, rest, 0, F[fID][3]);
+//printf("    T: %d", S);
 	int16_t DIFF = Decode_SOS_MCU_Block_Bits(buff, readSz, rest, S);
-printf("    DIFF: %d", DIFF);
+//printf("    DIFF: %d", DIFF);
 	DIFF = Decode_SOS_MCU_Block_Extend(DIFF, S);
-printf("    EXTEND(): %d\n", DIFF);
+//printf("    EXTEND(): %d\n", DIFF);
 	DCP[fID] += DIFF;
 	Block[0] = DCP[fID];
 
 	int pos = 1;
 	uint8_t R;
-printf("AC:\n");
+//printf("AC:\n");
 	while (pos < BLOCKS){
-		S = Decode_SOS_MCU_Block_Huffman(buff, readSz, rest, 1, ht_ac_id);
+		S = Decode_SOS_MCU_Block_Huffman(buff, readSz, rest, 1, F[fID][4]);
 		R = ((S & 0xF0) >> 4);
 		S &= 0x0F;
-printf("    RS: 0x%x%x", R, S);
+//printf("    RS: 0x%x%x", R, S);
 		if (R == 0 && S == 0){
-puts("");
+//puts("");
 			break;
 		}
 		DIFF = Decode_SOS_MCU_Block_Bits(buff, readSz, rest, S);
-printf("    ZZ(K): %d", DIFF);
+//printf("    ZZ(K): %d", DIFF);
 		DIFF = Decode_SOS_MCU_Block_Extend(DIFF, S);
-printf("    EXTEND(): %d\n", DIFF);
+//printf("    EXTEND(): %d\n", DIFF);
 		for (int i=0; i<R; i++, pos++)
 			Block[pos] = 0;
 		Block[pos++] = DIFF;
 	}
 	for (; pos < BLOCKS; pos++)
 		Block[pos] = 0;
+
+	/* DeQuantize */
+	Decode_SOS_MCU_Block_Dequantize(Block, fID);
+
+	/* Zig-zag order */
+	Decode_SOS_MCU_Block_Zigzag(Block);
+
+	/* IDCT */
+	Decode_SOS_MCU_Block_IDCT(Block);
 }
 
-void Decode_SOS_MCU(char **buff, int *readSz, int *rest){
+void Decode_SOS_MCU_RGB(int16_t YCC[][BLOCKS], int indexY, int indexX){
+	int16_t shift[] = {	0,	-128, -128};
+	double coef[] = {	1,		1,			1,
+						1.772,	-0.34414,	0,
+						0,		-0.71414,	1.402		};
+	int nF = 0, nC = 0;
+	int16_t tmpB[Hmax*Vmax][BLOCKS];
+	double BGRtmp[Hmax*Vmax*8*8][3];
+	memset(BGRtmp, 0, sizeof(BGRtmp));
+	for (int f=0; f<4; f++){
+		if (F[f][0] == 0 || F[f][1] == 0) continue;
+		int xScale = Hmax / F[f][0];
+		int yScale = Vmax / F[f][1];
+		for (int y=0; y<Vmax; y++){
+			for (int x=0; x<Hmax; x++){
+				int yccX = x / xScale;
+				int yccY = y / yScale;
+				for (int i=0; i<8; i++){
+					for (int j=0; j<8; j++){
+						int yccI = i / yScale + (y % yScale)*(8/yScale);
+						int yccJ = j / xScale + (x % xScale)*(8/xScale);
+						tmpB[y*Hmax+x][i*8+j] = YCC[nF + yccY*F[f][0]+yccX][yccI*8+yccJ];
+					}
+				}
+			}
+		}
+
+		/*
+		for (int y=0; y<Vmax; y++){
+			for (int x=0; x<Hmax; x++){
+				printf("(%2d, %2d)\n", 0, 0);
+				for (int i=0; i<8; i++){
+					for (int j=0; j<8; j++){
+						printf("%6d", tmpB[0*Hmax+0][i*8+j]);
+					}
+					puts("");
+				}
+			}
+		}
+		*/
+
+		for (int y=0; y<Vmax; y++){
+			for (int x=0; x<Hmax; x++){
+				for (int i=0; i<8; i++){
+					for (int j=0; j<8; j++){
+						int rgbY = y*8 + i;
+						int rgbX = x*8 + j;
+						BGRtmp[rgbY*Hmax*8+rgbX][0] += coef[nC*3+0] * (tmpB[y*Hmax+x][i*8+j] + shift[nC]);
+						BGRtmp[rgbY*Hmax*8+rgbX][1] += coef[nC*3+1] * (tmpB[y*Hmax+x][i*8+j] + shift[nC]);
+						BGRtmp[rgbY*Hmax*8+rgbX][2] += coef[nC*3+2] * (tmpB[y*Hmax+x][i*8+j] + shift[nC]);
+					}
+				}
+			}
+		}
+
+		nF += F[f][0]*F[f][1];
+		nC += 1;
+	}
+	int baseY = indexY * Vmax * 8;
+	int baseX = indexX * Hmax * 8;
+	for (int y=0, i=baseY; y<Vmax*8; y++, i++){
+		for (int x=0, j=baseX; x<Hmax*8; x++, j++){
+			for (int c=0; c<3; c++){
+				if (BGRtmp[y*Hmax*8+x][c] > 255) BGRtmp[y*Hmax*8+x][c] = 255;
+				else if (BGRtmp[y*Hmax*8+x][c] < 0) BGRtmp[y*Hmax*8+x][c] = 0;
+				BGR[i*MAXL+j][c] = BGRtmp[y*Hmax*8+x][c];
+			}
+		}
+	}
+
+	/*
+	for (int y=0, i=baseY; y<8; y++, i++){
+		for (int x=0, j=baseX; x<8; x++, j++)
+			printf("[%3d %3d %3d] ", BGR[i*MAXL+j][0], BGR[i*MAXL+j][1], BGR[i*MAXL+j][2]);
+		puts("");
+	}
+	*/
+}
+
+void Decode_SOS_MCU(char **buff, int *readSz, int *rest, int indexY, int indexX){
 	uint32_t MCU_nB = 0;
 	for (int i=0; i<=Nf; i++)
 		MCU_nB += F[i][0] * F[i][1];
@@ -286,12 +485,15 @@ void Decode_SOS_MCU(char **buff, int *readSz, int *rest){
 	int16_t Block[MCU_nB][BLOCKS];
 	MCU_nB = 0;
 
-	for (int f=0; f<=Nf; f++){
+//	printf("\nMCU(%2d, %2d)\n", indexY, indexX);
+	for (int f=0; f<4; f++){
 		for (int i=0; i<F[f][0]*F[f][1]; i++, MCU_nB++){
-			printf("\n----- MCU_nB: %d\n", MCU_nB);
-			Decode_SOS_MCU_Block(buff, readSz, rest, Block[MCU_nB], f, F[f][3], F[f][4]);
+//			printf("\n----- MCU_nB: %d\n", MCU_nB);
+			Decode_SOS_MCU_Block(buff, readSz, rest, Block[MCU_nB], f);
 		}
 	}
+
+	Decode_SOS_MCU_RGB(Block, indexY, indexX);
 }
 
 void Decode_SOS(char **buff, int *readSz){
@@ -321,15 +523,14 @@ void Decode_SOS(char **buff, int *readSz){
 
 	for (int i=0; i<MCU_Y; i++){
 		for (int j=0; j<MCU_X; j++){
-			printf("\nMCU(%2d, %2d)\n", i, j);
-			Decode_SOS_MCU(buff, readSz, &rest);
+			Decode_SOS_MCU(buff, readSz, &rest, i, j);
 		}
 	}
 	*buff += 1;
 	*readSz += 1;
 }
 
-int Decode(char *readBuff, int readBuffSz, char *writeBuff, int *writeBuffSz){
+int Decode(char *readBuff, int readBuffSz){
 	char *scanPtr = readBuff;
 	uint8_t *symbol;
 	int scanNum = 0;
@@ -414,23 +615,67 @@ int ReadFile(char *fn, char *buff, int *buffsize){
 	fseek(fptr, 0L, SEEK_END);
 	*buffsize = ftell(fptr);
 	fseek(fptr, 0L, SEEK_SET);
+	if (*buffsize > MAXS){
+		puts("input file is too large.");
+		return 0;
+	}
 	fread(buff, sizeof(char), *buffsize, fptr);
 	fclose(fptr);
 	return 1;
 }
 
-int WriteFile(char *fn, char *buff, int buffsize){
+int WriteFile(char *fn, char *buff){
+	uint8_t *ptr = buff;
+	uint32_t size = 0;
+	uint32_t MCU_X = (X + (Hmax*8 - 1)) / (Hmax * 8);
+	uint32_t MCU_Y = (Y + (Vmax*8 - 1)) / (Vmax * 8);
+	uint32_t Xmax = MCU_X * Hmax * 8;
+	uint32_t Ymax = MCU_Y * Vmax * 8;
+
+	BmpHeader header;
+	BmpImageInfo info;
+
+	memcpy(ptr, "BM", 2*sizeof(char));
+	ptr += 2, size += 2;
+
+	header.fileSize = Ymax * Xmax * 3 + 54;
+	header.reserved = 0;
+	header.offset = 54;
+	memcpy(ptr, &header, sizeof(BmpHeader));
+	ptr += sizeof(BmpHeader), size += sizeof(BmpHeader);
+
+	info.headerSize = 40;
+	info.width = Xmax;
+	info.height = Ymax;
+	info.planes = 1;
+	info.bitsPerPixels = 24;
+	info.compression = 0;
+	info.bitmapDataSize = Ymax * Xmax * 3;
+	info.HResolution = 0x0B12;
+	info.VResolution = 0x0B12;
+	info.usedColors = 0;
+	info.importantColors = 0;
+	memcpy(ptr, &info, sizeof(BmpImageInfo));
+	ptr += sizeof(BmpImageInfo), size += sizeof(BmpImageInfo);
+
+	int l = sizeof(uint8_t) * Xmax * 3;
+	for (int y = Ymax - 1; y>=0; y--){
+		memcpy(ptr, BGR[y*MAXL], l);
+		ptr += l, size += l;
+	}
+
 	FILE *fptr = fopen(fn, "wb");
 	if (!fptr) return 0;
-	fwrite(buff, sizeof(char), buffsize, fptr);
+	fwrite(buff, sizeof(uint8_t), size, fptr);
 	fclose(fptr);
+
 	return 1;
 }
 
 /* decode.c */
 
-char readBuff[MAXS], writeBuff[MAXS];
-int readBuffSz, writeBuffSz;
+char readBuff[MAXS], writeBuff[MAXS*3];
+int readBuffSz;
 int main(int argc, char *argv[]){
 	if (argc < 3){
 		puts("usage : output [input_file] [output_file]");
@@ -442,14 +687,15 @@ int main(int argc, char *argv[]){
 		return 0;
 	}
 
-	if (!Decode( readBuff, readBuffSz, writeBuff, &writeBuffSz )){
+	if (!Decode( readBuff, readBuffSz )){
 		puts("Decode file failed.");
 		return 0;
 	}
 
-	if (!WriteFile( argv[2], writeBuff, writeBuffSz )){
+	if (!WriteFile( argv[2], writeBuff )){
 		puts("Write file failed.");
 		return 0;
 	}
+
 	return 0;
 }
