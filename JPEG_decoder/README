@@ -17,11 +17,11 @@
 ##### Makefile #####
 
 CC = gcc -std=c99
-CFLAG = -O2
+CFLAG = -O2 
 
 all: compile run
 
-compile:
+compile: main.c
 	$(CC) $(CFLAG) main.c -o JpegDecoder
 run:
 	bash run.sh

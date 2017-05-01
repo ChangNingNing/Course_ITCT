@@ -164,7 +164,7 @@ int Decode_SOS_MCU_FF(uint8_t *tmp){
 	return shift + 1;
 }
 
-int16_t Decode_SOS_MCU_Block_Extend(int16_t DIFF, uint8_t S){
+inline int16_t Decode_SOS_MCU_Block_Extend(int16_t DIFF, uint8_t S){
 	int16_t ret = 0;
 	if (S == 0) return ret;
 	if (DIFF < (1 << (S-1))){
@@ -248,7 +248,7 @@ uint16_t Decode_SOS_MCU_Block_Bits(char **buff, int *readSz, int *rest, uint8_t 
 	return DIFF;
 }
 
-void Decode_SOS_MCU_Block_Dequantize(int16_t Block[BLOCKS], int fID){
+inline void Decode_SOS_MCU_Block_Dequantize(int16_t Block[BLOCKS], int fID){
 	int QT_ID = F[fID][2];
 	for (int i=0; i<BLOCKS; i++)
 		Block[i] *= QT[QT_ID][i];
@@ -261,7 +261,7 @@ void Decode_SOS_MCU_Block_Dequantize(int16_t Block[BLOCKS], int fID){
 	*/
 }
 
-void Decode_SOS_MCU_Block_Zigzag(int16_t Block[BLOCKS]){
+inline void Decode_SOS_MCU_Block_Zigzag(int16_t Block[BLOCKS]){
 	static const uint8_t _T[BLOCKS] = {
 		0,	1,	5,	6,	14,	15,	27,	28,
 		2,	4,	7,	13,	16,	26,	29,	42,
@@ -286,9 +286,9 @@ void Decode_SOS_MCU_Block_Zigzag(int16_t Block[BLOCKS]){
 	*/
 }
 
-void Decode_SOS_MCU_Block_IDCT(int16_t Block[BLOCKS]){
+inline void Decode_SOS_MCU_Block_IDCT(int16_t Block[BLOCKS]){
 
-	static const double cosT[BLOCKS] = {
+	static const float cosT[BLOCKS] = {
 	1.000000000000,	0.980785280403,	0.923879532511,	0.831469612303,	0.707106781187,	0.555570233020,	0.382683432365,	0.195090322016,
 	1.000000000000,	0.831469612303,	0.382683432365,	-0.195090322016,-0.707106781187,-0.980785280403,-0.923879532511,-0.555570233019,
 	1.000000000000,	0.555570233020,	-0.382683432365,-0.980785280403,-0.707106781186,0.195090322016,	0.923879532511,	0.831469612302,
@@ -298,12 +298,11 @@ void Decode_SOS_MCU_Block_IDCT(int16_t Block[BLOCKS]){
 	1.000000000000,	-0.831469612303,0.382683432365,	0.195090322016,	-0.707106781186,0.980785280403,	-0.923879532512,0.555570233021,
 	1.000000000000,	-0.980785280403,0.923879532511,	-0.831469612303,0.707106781187,	-0.555570233020,0.382683432366,	-0.195090322017
 	};
-	static const double C[8] = {
+	static const float C[8] = {
 	0.7071067811865475,	1,	1,	1,	1,	1,	1,	1
 	};
-
 /*
-	double cosT[BLOCKS], C[8];
+	float cosT[BLOCKS], C[8];
 #define PI 3.14159265359
 	for (int i=0; i<8; i++)
 		for (int j=0; j<8; j++)
@@ -325,7 +324,7 @@ void Decode_SOS_MCU_Block_IDCT(int16_t Block[BLOCKS]){
 
 	for (int i=0; i<8; i++){
 		for (int j=0; j<8; j++){
-			double sum = 0;
+			float sum = 0;
 			for (int u=0; u<8; u++){
 				for (int v=0; v<8; v++){
 					sum += C[u]*C[v]*tmp[u*8+v]*cosT[i*8+u]*cosT[j*8+v];
@@ -406,12 +405,11 @@ void Decode_SOS_MCU_Block(char **buff, int *readSz, int *rest, int16_t Block[BLO
 
 void Decode_SOS_MCU_RGB(int16_t YCC[][BLOCKS], int indexY, int indexX){
 	static const int16_t shift[] = {	0,	-128, -128};
-	static const double coef[] = {	1,		1,			1,
+	static const float coef[] = {	1,		1,			1,
 									1.772,	-0.34414,	0,
 									0,		-0.71414,	1.402		};
 	int nF = 0, nC = 0;
-	int16_t tmpB[Hmax*Vmax][BLOCKS];
-	double BGRtmp[Hmax*Vmax*8*8][3];
+	float BGRtmp[Hmax*Vmax*8*8][3];
 	memset(BGRtmp, 0, sizeof(BGRtmp));
 	for (int f=0; f<4; f++){
 		if (F[f][0] == 0 || F[f][1] == 0) continue;
@@ -419,42 +417,20 @@ void Decode_SOS_MCU_RGB(int16_t YCC[][BLOCKS], int indexY, int indexX){
 		int yScale = Vmax / F[f][1];
 		for (int y=0; y<Vmax; y++){
 			for (int x=0; x<Hmax; x++){
-				int yccX = x / xScale;
-				int yccY = y / yScale;
+				int yccX = (x / xScale);
+				int yccY = (y / yScale) * F[f][0];
+				int yccItmp = (y % yScale)*(8 / yScale);
+				int yccJtmp = (x % xScale)*(8 / xScale);
 				for (int i=0; i<8; i++){
 					for (int j=0; j<8; j++){
-						int yccI = i / yScale + (y % yScale)*(8/yScale);
-						int yccJ = j / xScale + (x % xScale)*(8/xScale);
-						tmpB[y*Hmax+x][i*8+j] = YCC[nF + yccY*F[f][0]+yccX][yccI*8+yccJ];
-					}
-				}
-			}
-		}
-
-		/*
-		// Debug
-		for (int y=0; y<Vmax; y++){
-			for (int x=0; x<Hmax; x++){
-				printf("(%2d, %2d)\n", 0, 0);
-				for (int i=0; i<8; i++){
-					for (int j=0; j<8; j++){
-						printf("%6d", tmpB[0*Hmax+0][i*8+j]);
-					}
-					puts("");
-				}
-			}
-		}
-		*/
-
-		for (int y=0; y<Vmax; y++){
-			for (int x=0; x<Hmax; x++){
-				for (int i=0; i<8; i++){
-					for (int j=0; j<8; j++){
-						int rgbY = y*8 + i;
-						int rgbX = x*8 + j;
-						BGRtmp[rgbY*Hmax*8+rgbX][0] += coef[nC*3+0] * (tmpB[y*Hmax+x][i*8+j] + shift[nC]);
-						BGRtmp[rgbY*Hmax*8+rgbX][1] += coef[nC*3+1] * (tmpB[y*Hmax+x][i*8+j] + shift[nC]);
-						BGRtmp[rgbY*Hmax*8+rgbX][2] += coef[nC*3+2] * (tmpB[y*Hmax+x][i*8+j] + shift[nC]);
+						int yccI = (i / yScale + yccItmp) * 8;
+						int yccJ = (j / xScale + yccJtmp);
+						int rgbY = (y*8 + i) * Hmax * 8;
+						int rgbX = (x*8 + j);
+						int16_t tmp = YCC[nF + yccY + yccX][yccI + yccJ];
+						BGRtmp[rgbY + rgbX][0] += coef[nC*3+0] * (tmp + shift[nC]);
+						BGRtmp[rgbY + rgbX][1] += coef[nC*3+1] * (tmp + shift[nC]);
+						BGRtmp[rgbY + rgbX][2] += coef[nC*3+2] * (tmp + shift[nC]);
 					}
 				}
 			}
@@ -468,9 +444,10 @@ void Decode_SOS_MCU_RGB(int16_t YCC[][BLOCKS], int indexY, int indexX){
 	for (int y=0, i=baseY; y<Vmax*8; y++, i++){
 		for (int x=0, j=baseX; x<Hmax*8; x++, j++){
 			for (int c=0; c<3; c++){
-				if (BGRtmp[y*Hmax*8+x][c] > 255) BGRtmp[y*Hmax*8+x][c] = 255;
-				else if (BGRtmp[y*Hmax*8+x][c] < 0) BGRtmp[y*Hmax*8+x][c] = 0;
-				BGR[i*MAXL+j][c] = BGRtmp[y*Hmax*8+x][c];
+				float tmp = BGRtmp[y*Hmax*8+x][c];
+				if (tmp > 255) tmp = 255;
+				else if (tmp < 0) tmp = 0;
+				BGR[i*MAXL+j][c] = tmp;
 			}
 		}
 	}
