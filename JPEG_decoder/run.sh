@@ -2,6 +2,6 @@
 for i in *.jpg
 do
 	tmp=${i%%.jpg}
-	echo ${tmp}
-	time ./JpegDecoder.exe "../JPEG/${tmp}.jpg" "${tmp}.bmp" > ${tmp}.log
+	printf "\n${tmp}.jpg"
+	time ./JpegDecoder "${tmp}.jpg" "${tmp}.bmp" >${tmp}.log
 done

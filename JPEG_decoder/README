@@ -1,0 +1,25 @@
+#####################################################
+#													#
+#	Compile											#
+#	Usage:											#
+#		./JpegDecoder [input file] [output file]	#
+#		or											#
+#		bash run.sh									#
+#													#
+#####################################################
+
+##### Makefile #####
+
+CC = gcc -std=c99
+CFLAG = -O2
+
+all: compile run
+
+compile:
+	$(CC) $(CFLAG) main.c -o JpegDecoder
+run:
+	bash run.sh
+clean:
+	rm JpegDecoder *.bmp *.log
+
+#####          #####

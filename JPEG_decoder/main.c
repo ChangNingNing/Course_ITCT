@@ -354,36 +354,42 @@ void Decode_SOS_MCU_Block_IDCT(int16_t Block[BLOCKS]){
 }
 
 void Decode_SOS_MCU_Block(char **buff, int *readSz, int *rest, int16_t Block[BLOCKS], int fID){
-//printf("DC Predictot: %d\n", DCP[fID]);
-//printf("DC:\n");
 	uint8_t S = Decode_SOS_MCU_Block_Huffman(buff, readSz, rest, 0, F[fID][3]);
-//printf("    T: %d", S);
 	int16_t DIFF = Decode_SOS_MCU_Block_Bits(buff, readSz, rest, S);
-//printf("    DIFF: %d", DIFF);
-	DIFF = Decode_SOS_MCU_Block_Extend(DIFF, S);
-//printf("    EXTEND(): %d\n", DIFF);
-	DCP[fID] += DIFF;
+	int16_t ExtendDIFF = Decode_SOS_MCU_Block_Extend(DIFF, S);
+	DCP[fID] += ExtendDIFF;
 	Block[0] = DCP[fID];
+
+	/*
+	// Debug
+	printf("DC Predicter: %d\n", DCP[fID]);
+	printf("DC:\n");
+	printf("    T: %d", S);
+	printf("    DIFF: %d", DIFF);
+	printf("    EXTEND(): %d\n", ExtendDIFF);
+	*/
 
 	int pos = 1;
 	uint8_t R;
-//printf("AC:\n");
 	while (pos < BLOCKS){
 		S = Decode_SOS_MCU_Block_Huffman(buff, readSz, rest, 1, F[fID][4]);
 		R = ((S & 0xF0) >> 4);
 		S &= 0x0F;
-//printf("    RS: 0x%x%x", R, S);
 		if (R == 0 && S == 0){
-//puts("");
 			break;
 		}
 		DIFF = Decode_SOS_MCU_Block_Bits(buff, readSz, rest, S);
-//printf("    ZZ(K): %d", DIFF);
-		DIFF = Decode_SOS_MCU_Block_Extend(DIFF, S);
-//printf("    EXTEND(): %d\n", DIFF);
+		ExtendDIFF = Decode_SOS_MCU_Block_Extend(DIFF, S);
 		for (int i=0; i<R; i++, pos++)
 			Block[pos] = 0;
-		Block[pos++] = DIFF;
+		Block[pos++] = ExtendDIFF;
+		/*
+		// Debug
+		printf("AC:\n");
+		printf("    RS: 0x%x%x", R, S);
+		printf("    ZZ(K): %d", DIFF);
+		printf("    EXTEND(): %d\n", ExtendDIFF);
+		*/
 	}
 	for (; pos < BLOCKS; pos++)
 		Block[pos] = 0;
@@ -399,10 +405,10 @@ void Decode_SOS_MCU_Block(char **buff, int *readSz, int *rest, int16_t Block[BLO
 }
 
 void Decode_SOS_MCU_RGB(int16_t YCC[][BLOCKS], int indexY, int indexX){
-	int16_t shift[] = {	0,	-128, -128};
-	double coef[] = {	1,		1,			1,
-						1.772,	-0.34414,	0,
-						0,		-0.71414,	1.402		};
+	static const int16_t shift[] = {	0,	-128, -128};
+	static const double coef[] = {	1,		1,			1,
+									1.772,	-0.34414,	0,
+									0,		-0.71414,	1.402		};
 	int nF = 0, nC = 0;
 	int16_t tmpB[Hmax*Vmax][BLOCKS];
 	double BGRtmp[Hmax*Vmax*8*8][3];
@@ -426,6 +432,7 @@ void Decode_SOS_MCU_RGB(int16_t YCC[][BLOCKS], int indexY, int indexX){
 		}
 
 		/*
+		// Debug
 		for (int y=0; y<Vmax; y++){
 			for (int x=0; x<Hmax; x++){
 				printf("(%2d, %2d)\n", 0, 0);
@@ -469,6 +476,7 @@ void Decode_SOS_MCU_RGB(int16_t YCC[][BLOCKS], int indexY, int indexX){
 	}
 
 	/*
+	// Debug
 	for (int y=0, i=baseY; y<8; y++, i++){
 		for (int x=0, j=baseX; x<8; x++, j++)
 			printf("[%3d %3d %3d] ", BGR[i*MAXL+j][0], BGR[i*MAXL+j][1], BGR[i*MAXL+j][2]);
@@ -660,6 +668,11 @@ int WriteFile(char *fn, char *buff){
 
 	int l = sizeof(uint8_t) * Xmax * 3;
 	for (int y = Ymax - 1; y>=0; y--){
+		if (size + l > MAXS * 3){
+			puts("output file is too large.");
+			return 0;
+		}
+
 		memcpy(ptr, BGR[y*MAXL], l);
 		ptr += l, size += l;
 	}
