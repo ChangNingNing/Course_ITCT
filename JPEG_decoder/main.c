@@ -612,10 +612,9 @@ int ReadFile(char *fn, char *buff, int *buffsize){
 int WriteFile(char *fn, char *buff){
 	uint8_t *ptr = buff;
 	uint32_t size = 0;
-	uint32_t MCU_X = (X + (Hmax*8 - 1)) / (Hmax * 8);
-	uint32_t MCU_Y = (Y + (Vmax*8 - 1)) / (Vmax * 8);
-	uint32_t Xmax = MCU_X * Hmax * 8;
-	uint32_t Ymax = MCU_Y * Vmax * 8;
+	// BMP format: X must be the multiple of 4.
+	uint32_t Xmax = (3*X + 3) / 4 * 4;
+	uint32_t Ymax = Y;
 
 	BmpHeader header;
 	BmpImageInfo info;
@@ -623,19 +622,19 @@ int WriteFile(char *fn, char *buff){
 	memcpy(ptr, "BM", 2*sizeof(char));
 	ptr += 2, size += 2;
 
-	header.fileSize = Ymax * Xmax * 3 + 54;
+	header.fileSize = Ymax * Xmax + 54;
 	header.reserved = 0;
 	header.offset = 54;
 	memcpy(ptr, &header, sizeof(BmpHeader));
 	ptr += sizeof(BmpHeader), size += sizeof(BmpHeader);
 
 	info.headerSize = 40;
-	info.width = Xmax;
-	info.height = Ymax;
+	info.width = X;
+	info.height = Y;
 	info.planes = 1;
 	info.bitsPerPixels = 24;
 	info.compression = 0;
-	info.bitmapDataSize = Ymax * Xmax * 3;
+	info.bitmapDataSize = Ymax * Xmax;
 	info.HResolution = 0x0B12;
 	info.VResolution = 0x0B12;
 	info.usedColors = 0;
@@ -643,7 +642,7 @@ int WriteFile(char *fn, char *buff){
 	memcpy(ptr, &info, sizeof(BmpImageInfo));
 	ptr += sizeof(BmpImageInfo), size += sizeof(BmpImageInfo);
 
-	int l = sizeof(uint8_t) * Xmax * 3;
+	int l = sizeof(uint8_t) * Xmax;
 	for (int y = Ymax - 1; y>=0; y--){
 		if (size + l > MAXS * 3){
 			puts("output file is too large.");
