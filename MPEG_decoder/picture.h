@@ -19,13 +19,17 @@ class Picture {
 		// slice_start_code 0x00000101 ~ 0x000001AF
 
 		/* picture info. */
-		int temporal_reference;
+		unsigned int temporal_reference;
 		int picture_coding_type;
 		int vbv_delay;
 		int full_pel_forward_vector;
-		int forward_f_code;
 		int full_pel_backward_vector;
+		int forward_f_code;
+		int forward_r_size;
+		int forward_f;
 		int backward_f_code;
+		int backward_r_size;
+		int backward_f;
 		int extra_bit_picture;
 		int extra_information_picture;
 		int picture_extension_data;

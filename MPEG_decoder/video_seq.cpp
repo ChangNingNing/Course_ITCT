@@ -5,7 +5,9 @@
 
 using namespace std;
 
-VideoSeq::VideoSeq(InBit& x, const bool& d): inBit(x), DEBUG(d) {}
+VideoSeq::VideoSeq(InBit& x, const bool& d): inBit(x), DEBUG(d) {
+	
+}
 
 VideoSeq::~VideoSeq() {}
 
@@ -39,7 +41,7 @@ void VideoSeq::sequence_header() {
 			intra_quantizer_matrix[i] = inBit.getBits(8);
 	}
 	else{
-	
+		load_default_intra_quantizer_matrix();
 	}
 	load_non_intra_quantizer_matrix = inBit.getBits(1);
 	if (load_intra_quantizer_matrix){
@@ -47,7 +49,7 @@ void VideoSeq::sequence_header() {
 			non_intra_quantizer_matrix[i] = inBit.getBits(8);
 	}
 	else{
-	
+		load_default_non_intra_quantizer_matrix();
 	}
 	inBit.next_start_code();
 	if (inBit.nextbits() == extension_start_code){
@@ -70,19 +72,36 @@ void VideoSeq::sequence_header() {
 		printf("horizontal_size %d\n", horizontal_size);
 		printf("vertical_size %d\n", vertical_size);
 		printf("pel_aspect_ratio %d\n", pel_aspect_ratio);
+		printf("----- %f\n", table_pel_aspect_ratio[(unsigned int)pel_aspect_ratio]);
 		printf("picture_rate %d\n", picture_rate);
+		printf("----- %f\n", table_picture_rate[(unsigned int)picture_rate]);
 		printf("bit_rate %d\n", bit_rate);
 		printf("marker_bit %d\n", marker_bit);
 		printf("vbv_buffer_size %d\n", vbv_buffer_size);
 		printf("constrained_parameter_flag %d\n", constrained_parameter_flag);
 		printf("load_intra_quantizer_matrix %d\n", load_intra_quantizer_matrix);
 		printf("load_non_intra_quantizer_matrix %d\n", load_non_intra_quantizer_matrix);
+		printf("intra_quantizer_matrix\n");
+		for (int i=0; i<8; i++, puts(""))
+			for (int j=0; j<8; j++)
+				printf("%2d ", intra_quantizer_matrix[i*8+j]);
+		printf("non_intra_quantizer_matrix\n");
+		for (int i=0; i<8; i++, puts(""))
+			for (int j=0; j<8; j++)
+				printf("%2d ", non_intra_quantizer_matrix[i*8+j]);
 	}
 }
 
 void VideoSeq::group_of_pictures() {
 	int _group_start_code = inBit.getBits(32);
 	time_code = inBit.getBits(25);
+	drop_frame_flag = (time_code >> 24) & 0x1;
+	time_code_hours = (time_code >> 19) & 0x1F;
+	time_code_minutes = (time_code >> 13) & 0x3F;
+	marker_bit = (time_code >> 12) & 0x1;
+	time_code_seconds = (time_code >> 6) & 0x3F;
+	time_code_pictures = (time_code) & 0x3F;
+
 	closed_gop = inBit.getBits(1);
 	broken_link = inBit.getBits(1);
 	inBit.next_start_code();
@@ -104,6 +123,12 @@ void VideoSeq::group_of_pictures() {
 	if (DEBUG){
 		puts("\n--- group_of_pictures ---");
 		printf("time_code %d\n", time_code);
+		printf("drop_frame_flag %d\n", drop_frame_flag);
+		printf("time_code_hours %d\n", time_code_hours);
+		printf("time_code_minutes %d\n", time_code_minutes);
+		printf("marker_bit %d\n", marker_bit);
+		printf("time_code_seconds %d\n", time_code_seconds);
+		printf("time_code_pictures %d\n", time_code_pictures);
 		printf("closed_gop %d\n", closed_gop);
 		printf("broken_link %d\n", broken_link);
 	}
@@ -112,4 +137,14 @@ void VideoSeq::group_of_pictures() {
 		Picture picture(inBit, DEBUG);
 		picture.decoder();
 	} while (inBit.nextbits() == picture_start_code);
+}
+
+void VideoSeq::load_default_intra_quantizer_matrix(){
+	for (int i=0; i<64; i++)
+		intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
+}
+
+void VideoSeq::load_default_non_intra_quantizer_matrix(){
+	for (int i=0; i<64; i++)
+		non_intra_quantizer_matrix[i] = default_non_intra_quantizer_matrix[i];
 }

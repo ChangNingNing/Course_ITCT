@@ -51,24 +51,19 @@ int InBit::getBits(int num = 1) {
 }
 
 void InBit::next_start_code() {
-	while (!bytealigned())
-		int zero_bit = getBits(1);
+	if (!bytealigned()) _read();
 	while ((nextbits()>>8) != 0x000001)
 		int zero_byte = getBits(8);
 }
 
 int InBit::nextbits() {
-	int ret = 0;
-	if (bufSize == 8)
-		ret = buff & ((1<<MAXB)-1);
-	else
-		ret = (ret << MAXB) + fin.get();
-	ret = (ret << MAXB) + fin.get();
-	ret = (ret << MAXB) + fin.get();
-	ret = (ret << MAXB) + fin.get();
+	int ret = buff;
+	ret = (ret << 8) + fin.get();
+	ret = (ret << 8) + fin.get();
+	ret = (ret << 8) + fin.get();
+	ret = (ret << (8-bufSize)) + ((fin.get() >> bufSize) & ((1 << (8-bufSize))-1));
 
-	if (bufSize == 0)
-		fin.unget();
+	fin.unget();
 	fin.unget();
 	fin.unget();
 	fin.unget();
