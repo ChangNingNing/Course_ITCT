@@ -1,12 +1,20 @@
 #include "picture.h"
 #include "bit.h"
 #include "slice.h"
+#include "image.h"
+#include <string.h>
 
-Picture::Picture(InBit& x, const bool& d): inBit(x), DEBUG(d){}
+Picture::Picture(InBit& x, const bool& d, Slice& s, Image& i): inBit(x), DEBUG(d), slice(s), image(i) {
+	picture_num = 0;
+}
 
 Picture::~Picture() {}
 
-void Picture::decoder() {
+void Picture::decoder(	const int& horizontal_size, const int& vertical_size, const int& mb_width,
+						const int *intra_quant, const int *non_intra_quant) {
+	picture_num++;
+	/*  */
+
 	int _picture_start_code = inBit.getBits(32);
 	temporal_reference = inBit.getBits(10);
 	picture_coding_type = inBit.getBits(3);
@@ -46,22 +54,33 @@ void Picture::decoder() {
 	}
 
 	if (DEBUG){
-		puts("\n--- picture ---");
-		printf("temporal_reference %d\n", temporal_reference);
-		printf("picture_coding_type %d\n", picture_coding_type);
-		printf("forward_f_code %d\n", forward_f_code);
-		printf("forward_r_size %d\n", forward_r_size);
-		printf("forward_f %d\n", forward_f);
-		printf("backward_f_code %d\n", backward_f_code);
-		printf("backward_r_size %d\n", backward_r_size);
-		printf("backward_f %d\n", backward_f);
-		printf("vbv_delay %d\n", vbv_delay);
-		printf("extra_bit_picture %d\n", extra_bit_picture);
+		printf("==PICTURE_START_CODE(%d)== -> %08x\n", picture_num, _picture_start_code);
+		printf("	temporal_reference: %d\n", temporal_reference);
+		printf("	picture_coding_type: %d\n", picture_coding_type);
+		printf("	vbv_delay: %d\n", vbv_delay);
+		if (picture_coding_type == 2 || picture_coding_type == 3){
+			printf("	full_pel_forward_vector: %d\n", full_pel_forward_vector);
+			printf("	forward_f_code: %d\n", forward_f_code);
+		}
+//		printf("forward_f_code %d\n", forward_f_code);
+//		printf("forward_r_size %d\n", forward_r_size);
+//		printf("forward_f %d\n", forward_f);
+//		printf("backward_f_code %d\n", backward_f_code);
+//		printf("backward_r_size %d\n", backward_r_size);
+//		printf("backward_f %d\n", backward_f);
+		printf("	extra_bit_picture: %d\n", extra_bit_picture);
 	}
 
-	Slice slice(inBit, DEBUG);
 	do {
-		slice.decoder(picture_coding_type, forward_f, forward_r_size, backward_f, backward_r_size);
+		slice.decoder(	picture_coding_type,
+						forward_f, forward_r_size,
+						backward_f, backward_r_size,
+						mb_width,
+						intra_quant, non_intra_quant);
 	} while (inBit.nextbits() >= 0x00000101 && inBit.nextbits() <= 0x000001AF);
 	// slice_start_codes are a range.
+
+	char fout[32];
+	sprintf(fout, "try%d.bmp", picture_num);
+	image.OutputBMP(vertical_size, horizontal_size, fout);
 }

@@ -2,20 +2,27 @@
 #define SLICE_H
 
 #include "bit.h"
+#include "macroblock.h"
 
 class Slice {
 	public:
-		Slice(InBit& x, const bool& d);
+		Slice(InBit& x, const bool& d, Macroblock& mb);
 		~Slice();
-		void decoder(int p_c_t, int f_f, int f_r_s, int b_f, int b_r_s);
+		void decoder(	const int& picture_coding_type,
+						const int& forward_f, const int& forward_r_size,
+						const int& backward_f, const int& backward_r_size,
+						const int& mb_width,
+						const int* intra_quant, const int* non_intra_quant);
 	private:
 		const bool& DEBUG;
 		InBit& inBit;
-		int picture_coding_type;
-		int forward_f;
-		int forward_r_size;
-		int backward_f;
-		int backward_r_size;
+		Macroblock& macroblock;
+
+		/* Intra type decoder */
+		int dct_dc_y_past;
+		int dct_dc_cb_past;
+		int dct_dc_cr_past;
+		int past_intra_address;
 
 		/* syntax codes */
 		// slice_start_code 0x00000101 ~ 0x000001AF
@@ -26,6 +33,7 @@ class Slice {
 		int quantizer_scale;
 		int extra_bit_slice;
 		int extra_information_slice;
+		int previous_macroblock_address;
 };
 
 #endif

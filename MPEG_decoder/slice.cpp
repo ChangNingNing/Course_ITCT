@@ -1,21 +1,28 @@
 #include "slice.h"
 #include "bit.h"
 #include "macroblock.h"
+#include "block.h"
 
-Slice::Slice(InBit& x, const bool& d): inBit(x), DEBUG(d) {}
+Slice::Slice(InBit& x, const bool& d, Macroblock& mb): inBit(x), DEBUG(d), macroblock(mb) {}
 
 Slice::~Slice() {}
 
-void Slice::decoder(int p_c_t, int f_f, int f_r_s, int b_f, int b_r_s){
+void Slice::decoder(const int& picture_coding_type,
+					const int& forward_f, const int& forward_r_size,
+					const int& backward_f, const int& backward_r_size,
+					const int& mb_width,
+					const int* intra_quant, const int* non_intra_quant){
+	dct_dc_y_past = 1024;
+	dct_dc_cb_past = 1024;
+	dct_dc_cr_past = 1024;
+	past_intra_address = -2;
 	/*  */
-	picture_coding_type = p_c_t;
-	forward_f = f_f;
-	forward_r_size = f_r_s;
-	backward_f = b_f;
-	backward_r_size = b_r_s;
 
 	slice_start_code = inBit.getBits(32);
+
 	slice_vertical_position = slice_start_code & 0xFF;
+	previous_macroblock_address = (slice_vertical_position - 1) * mb_width - 1;
+
 	quantizer_scale = inBit.getBits(5);
 	while ((inBit.nextbits() >> 31) & 0x1 == 0x1){
 		extra_bit_slice = inBit.getBits(1);
@@ -24,15 +31,21 @@ void Slice::decoder(int p_c_t, int f_f, int f_r_s, int b_f, int b_r_s){
 	extra_bit_slice = inBit.getBits(1);
 
 	if (DEBUG){
-		puts("\n--- slice ---");
-		printf("slice_start_code %d\n", slice_start_code);
-		printf("slice_vertical_position %d\n", slice_vertical_position);
-		printf("quantizer_scale %d\n", quantizer_scale);
+		printf("==SLICE_START_CODE== -> %08x\n", slice_start_code);
+//		printf("slice_vertical_position %d\n", slice_vertical_position);
+		printf("	quantizer_scale: %d\n", quantizer_scale);
+		printf("	extra_bit_slice: %d\n", extra_bit_slice);
 	}
 
-	Macroblock macroblock(inBit, DEBUG);
 	do {
-		macroblock.decoder(picture_coding_type, forward_f, forward_r_size, backward_f, backward_r_size);
+		macroblock.decoder(	picture_coding_type,
+							forward_f, forward_r_size,
+							backward_f, backward_r_size,
+							quantizer_scale,
+							dct_dc_y_past, dct_dc_cb_past, dct_dc_cr_past,
+							past_intra_address, previous_macroblock_address,
+							mb_width,
+							intra_quant, non_intra_quant);
 	} while ((inBit.nextbits() >> 9) != 0x0);
 	inBit.next_start_code();
 }

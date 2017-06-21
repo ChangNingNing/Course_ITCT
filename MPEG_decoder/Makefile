@@ -1,6 +1,6 @@
 COMPILER=g++
 GXXFLAG=-std=c++11 -O2
-OFILE=main.o bit.o video_seq.o picture.o slice.o macroblock.o
+OFILE=main.o bit.o video_seq.o picture.o slice.o macroblock.o block.o image.o
 
 all: MPEG_decoder
 
@@ -22,7 +22,13 @@ slice: slice.cpp
 macroblock: macroblock.cpp
 	$(COMPILER) $(GXXFLAG) macroblock.cpp -c
 
-MPEG_decoder: main.o bit.o video_seq.o picture.o slice.o macroblock.o
+block: block.cpp
+	$(COMPILER) $(GXXFLAG) block.cpp -c
+
+image: image.cpp
+	$(COMPILER) $(GXXFLAG) image.cpp -c
+
+MPEG_decoder: main.o bit.o video_seq.o picture.o slice.o macroblock.o block.o image.o
 	$(COMPILER) $(GXXFLAG) $(OFILE) -o MPEG_decoder
 
 clean:

@@ -58,15 +58,18 @@ void InBit::next_start_code() {
 
 int InBit::nextbits() {
 	int ret = buff;
+
 	ret = (ret << 8) + fin.get();
 	ret = (ret << 8) + fin.get();
 	ret = (ret << 8) + fin.get();
-	ret = (ret << (8-bufSize)) + ((fin.get() >> bufSize) & ((1 << (8-bufSize))-1));
+	if (bufSize != 8)
+		ret = (ret << (8-bufSize)) + ((fin.get() >> bufSize) & ((1 << (8-bufSize))-1));
 
 	fin.unget();
 	fin.unget();
 	fin.unget();
-	fin.unget();
+	if (bufSize != 8)
+		fin.unget();
 	return ret;
 }
 

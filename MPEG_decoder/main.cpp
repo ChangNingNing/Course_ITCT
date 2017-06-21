@@ -4,6 +4,11 @@
 
 #include "bit.h"
 #include "video_seq.h"
+#include "picture.h"
+#include "slice.h"
+#include "macroblock.h"
+#include "block.h"
+#include "image.h"
 
 using namespace std;
 
@@ -22,7 +27,13 @@ int main(int argc, char *argv[]){
 	}
 
 	InBit inBit(fin);
-	VideoSeq videoSeq(inBit, DEBUG);
+	Image image;
+
+	Block block(inBit, DEBUG);
+	Macroblock macroblock(inBit, DEBUG, block, image);
+	Slice slice(inBit, DEBUG, macroblock);
+	Picture picture(inBit, DEBUG, slice, image);
+	VideoSeq videoSeq(inBit, DEBUG, picture);
 
 	videoSeq.video_sequence();
 
