@@ -11,34 +11,67 @@ std::map<Key, int> Macroblock::macroblock_motion_VLC_code;
 std::map<Key, int> Macroblock::macroblock_pattern_VLC_code;
 
 void IDCT(int block[8][8]){
-    static const float cosT[8][8] = {
-    1.000000000000, 0.980785280403, 0.923879532511, 0.831469612303, 0.707106781187, 0.555570233020, 0.382683432365, 0.195090322016,
-    1.000000000000, 0.831469612303, 0.382683432365, -0.195090322016,-0.707106781187,-0.980785280403,-0.923879532511,-0.555570233019,
-    1.000000000000, 0.555570233020, -0.382683432365,-0.980785280403,-0.707106781186,0.195090322016, 0.923879532511, 0.831469612302,
-    1.000000000000, 0.195090322016, -0.923879532511,-0.555570233019,0.707106781187, 0.831469612302, -0.382683432366,-0.980785280403,
-    1.000000000000, -0.195090322016,-0.923879532511,0.555570233020, 0.707106781186, -0.831469612303,-0.382683432364,0.980785280403,
-    1.000000000000, -0.555570233020,-0.382683432365,0.980785280403, -0.707106781187,-0.195090322015,0.923879532511, -0.831469612303,
-    1.000000000000, -0.831469612303,0.382683432365, 0.195090322016, -0.707106781186,0.980785280403, -0.923879532512,0.555570233021,
-    1.000000000000, -0.980785280403,0.923879532511, -0.831469612303,0.707106781187, -0.555570233020,0.382683432366, -0.195090322017
-    };
-    static const float C[8] = {
-    0.7071067811865475, 1,  1,  1,  1,  1,  1,  1
-    };
+ 	static float C[8] = {
+	0.500000, 0.490393, 0.461940, 0.415735, 0.353553, 0.277785, 0.191342, 0.097545
+	};
 
-	int tmp[8][8];
-	memcpy(tmp, block, sizeof(int)*64);
-
-	for (int i=0; i<8; i++){
-		for (int j=0; j<8; j++){
-			float sum = 0;
-			for (int u=0; u<8; u++){
-				for (int v=0; v<8; v++){
-					sum += C[u]*C[v]*tmp[u][v]*cosT[i][u]*cosT[j][v];
-				}
-			}
-			block[i][j] = sum / 4;
-		}
-	}
+    float tmp[8][8], t[6], a[4], b[4], x[4];
+    for(int i = 0; i < 8; i++) {
+        t[0] = C[4] * block[0][i];
+        t[1] = C[2] * block[2][i];
+        t[2] = C[6] * block[2][i];
+        t[3] = C[4] * block[4][i];
+        t[4] = C[6] * block[6][i];
+        t[5] = C[2] * block[6][i];
+        a[0] = t[0] + t[1] + t[3] + t[4];
+        a[1] = t[0] + t[2] - t[3] - t[5];
+        a[2] = t[0] - t[2] - t[3] + t[5];
+        a[3] = t[0] - t[1] + t[3] - t[4];
+        x[0] = (float)block[1][i];
+        x[1] = (float)block[3][i];
+        x[2] = (float)block[5][i];
+        x[3] = (float)block[7][i];
+        b[0] = x[0]*C[1] + x[1]*C[3] + x[2]*C[5] + x[3]*C[7];
+        b[1] = x[0]*C[3] - x[1]*C[7] - x[2]*C[1] - x[3]*C[5];
+        b[2] = x[0]*C[5] - x[1]*C[1] + x[2]*C[7] + x[3]*C[3];
+        b[3] = x[0]*C[7] - x[1]*C[5] + x[2]*C[3] - x[3]*C[1];
+        tmp[0][i] = a[0] + b[0];
+        tmp[7][i] = a[0] - b[0];
+        tmp[1][i] = a[1] + b[1];
+        tmp[6][i] = a[1] - b[1];
+        tmp[2][i] = a[2] + b[2];
+        tmp[5][i] = a[2] - b[2];
+        tmp[3][i] = a[3] + b[3];
+        tmp[4][i] = a[3] - b[3];
+    }
+    for(int i = 0; i < 8; i++) {
+       	t[0] = tmp[i][0] * C[4];
+        t[1] = tmp[i][2] * C[2];
+        t[2] = tmp[i][2] * C[6];
+        t[3] = tmp[i][4] * C[4];
+        t[4] = tmp[i][6] * C[6];
+        t[5] = tmp[i][6] * C[2];
+        a[0] = t[0] + t[1] + t[3] + t[4];
+        a[1] = t[0] + t[2] - t[3] - t[5];
+        a[2] = t[0] - t[2] - t[3] + t[5];
+        a[3] = t[0] - t[1] + t[3] - t[4];
+        x[0] = tmp[i][1];
+        x[1] = tmp[i][3];
+        x[2] = tmp[i][5];
+        x[3] = tmp[i][7];
+        b[0] = x[0]*C[1] + x[1]*C[3] + x[2]*C[5] + x[3]*C[7];
+        b[1] = x[0]*C[3] - x[1]*C[7] - x[2]*C[1] - x[3]*C[5];
+        b[2] = x[0]*C[5] - x[1]*C[1] + x[2]*C[7] + x[3]*C[3];
+        b[3] = x[0]*C[7] - x[1]*C[5] + x[2]*C[3] - x[3]*C[1];
+        block[i][0] = 0.5 + a[0] + b[0];
+        block[i][7] = 0.5 + a[0] - b[0];
+        block[i][1] = 0.5 + a[1] + b[1];
+        block[i][6] = 0.5 + a[1] - b[1];
+        block[i][2] = 0.5 + a[2] + b[2];
+        block[i][5] = 0.5 + a[2] - b[2];
+        block[i][3] = 0.5 + a[3] + b[3];
+        block[i][4] = 0.5 + a[3] - b[3];
+    }
 }
 
 Macroblock::Macroblock(InBit& x, const bool& d, Block& b, Image& i): inBit(x), DEBUG(d), block(b), image(i){
@@ -418,23 +451,21 @@ void Macroblock::dct_recon_intra(	const int& bid, const int* intra_quant, const 
 	} 
 	// luminance block
 	int diff_tmp = macroblock_address - past_intra_addr;
+	dct_recon[0][0] = dct_zz[0] * 8;
 	if (bid < 4){
 		if (bid == 0){
-			dct_recon[0][0] = dct_zz[0] * 8;
 			if (diff_tmp > 1)
 				dct_recon[0][0] += 1024;
 			else
 				dct_recon[0][0] += y_past;
-			y_past = dct_recon[0][0];
 		}
 		else{
-			dct_recon[0][0] = y_past + dct_zz[0] * 8;
-			y_past = dct_recon[0][0];
+			dct_recon[0][0] += y_past;
 		}
+		y_past = dct_recon[0][0];
 	}
 	// chrominance Cb
 	else if (bid == 4){
-		dct_recon[0][0] = dct_zz[0] * 8;
 		if (diff_tmp > 1)
 			dct_recon[0][0] += 1024;
 		else
@@ -443,7 +474,6 @@ void Macroblock::dct_recon_intra(	const int& bid, const int* intra_quant, const 
 	}
 	// chrominance Cr
 	else {
-		dct_recon[0][0] = dct_zz[0] * 8;
 		if (diff_tmp > 1)
 			dct_recon[0][0] += 1024;
 		else

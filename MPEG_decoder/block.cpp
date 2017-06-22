@@ -154,7 +154,7 @@ Block::Block(InBit& x, const bool& d): inBit(x), DEBUG(d){
 
 Block::~Block(){}
 
-void Block::decoder(const int& i,
+void Block::decoder(const int& bid,
 					const int& picture_coding_type, const int *pattern_code,
 					const int& macroblock_intra,
 					int *dct_zz){
@@ -162,14 +162,13 @@ void Block::decoder(const int& i,
 	/*  */
 
 	if (DEBUG){
-		printf("		==BLOCK(%d)==\n", i);
+		printf("		==BLOCK(%d)==\n", bid);
 	}
 
-	if (pattern_code[i]){
+	if (pattern_code[bid]){
 		if (macroblock_intra){
-			if (i < 4) find_dct_dc_size_luminance(dct_zz);
+			if (bid < 4) find_dct_dc_size_luminance(dct_zz);
 			else find_dct_dc_size_chrominance(dct_zz);
-			dct_zz_i = 0;
 		}
 		else {
 			find_dct_coeff_first(dct_zz);
@@ -200,11 +199,11 @@ void Block::find_dct_dc_size_luminance(int *dct_zz){
 
 	if (tmp != 0){
 		dct_dc_differential = inBit.getBits(tmp);
-		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[0] = dct_dc_differential;
-		else dct_zz[0] = (-1 << tmp) | (dct_dc_differential+1);
+		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[dct_zz_i] = dct_dc_differential;
+		else dct_zz[dct_zz_i] = (-1 << tmp) | (dct_dc_differential+1);
 	}
 	else{
-		dct_zz[0] = 0;
+		dct_zz[dct_zz_i] = 0;
 	}
 
 	if (DEBUG){
@@ -227,11 +226,11 @@ void Block::find_dct_dc_size_chrominance(int *dct_zz){
 
 	if (tmp != 0){
 		dct_dc_differential = inBit.getBits(tmp);
-		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[0] = dct_dc_differential;
-		else dct_zz[0] = (-1 << tmp) | (dct_dc_differential+1);
+		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[dct_zz_i] = dct_dc_differential;
+		else dct_zz[dct_zz_i] = (-1 << tmp) | (dct_dc_differential+1);
 	}
 	else{
-		dct_zz[0] = 0;
+		dct_zz[dct_zz_i] = 0;
 	}
 
 	if (DEBUG){
@@ -268,8 +267,7 @@ void Block::find_dct_coeff_first(int *dct_zz){
 			level = (level << 24) >> 24;
 		}
 		else{
-			level = (level << 8) + inBit.getBits(8);
-			level = (level << 16) >> 16;
+			level = (level<<1 | inBit.getBits(8)) << 23 >> 23;
 		}
 	}
 
@@ -309,12 +307,8 @@ void Block::find_dct_coeff_next(int *dct_zz){
 			level = (level << 24) >> 24;
 		}
 		else{
-			level = (level << 8) + inBit.getBits(8);
-			level = (level << 16) >> 16;
+			level = (level<<1 | inBit.getBits(8)) << 23 >> 23;
 		}
-	}
-	else{
-		puts("fuck");
 	}
 
 	dct_zz_i += run + 1;

@@ -32,4 +32,4 @@ MPEG_decoder: main.o bit.o video_seq.o picture.o slice.o macroblock.o block.o im
 	$(COMPILER) $(GXXFLAG) $(OFILE) -o MPEG_decoder
 
 clean:
-	rm *.o MPEG_decoder
+	rm *.o MPEG_decoder *.bmp
