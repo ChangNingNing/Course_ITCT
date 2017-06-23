@@ -19,7 +19,7 @@ class InBit {
 		int bufSize;
 
 		void _reset(); // discard the current content in buffer.
-		bool _read(); // read 65536*1 byte once.
+		bool _read();
 };
 
 

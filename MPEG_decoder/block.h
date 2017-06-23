@@ -11,8 +11,7 @@ class Block {
 		Block(InBit& x, const bool& d);
 		~Block();
 		void decoder(	const int& i,
-						const int& picture_coding_type, const int* pattern_code,
-						const int& macroblock_intra,
+						const int& picture_coding_type, const int& macroblock_intra,
 						int *dct_zz);
 	private:
 		const bool& DEBUG;

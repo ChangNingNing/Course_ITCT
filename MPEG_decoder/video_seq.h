@@ -3,6 +3,7 @@
 
 #include "bit.h"
 #include "picture.h"
+#include "image.h"
 
 /* lookup table */
 const float table_pel_aspect_ratio[16] = {
@@ -40,13 +41,18 @@ const int default_non_intra_quantizer_matrix[64] = {
 
 class VideoSeq {
 	public:
-		VideoSeq(InBit& x, const bool& d, Picture& p);
+		VideoSeq(InBit& x, const bool& d, Picture& p, Image& i);
 		~VideoSeq();
 		void video_sequence();
+		void width();
+		void height();
 	private:
 		const bool& DEBUG;
 		InBit &inBit;
 		Picture& picture;
+		Image& image;
+		int forward_image_addr;
+		int backward_image_addr;
 
 		void load_default_intra_quantizer_matrix();
 		void load_default_non_intra_quantizer_matrix();

@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
 	Macroblock macroblock(inBit, DEBUG, block, image);
 	Slice slice(inBit, DEBUG, macroblock);
 	Picture picture(inBit, DEBUG, slice, image);
-	VideoSeq videoSeq(inBit, DEBUG, picture);
+	VideoSeq videoSeq(inBit, DEBUG, picture, image);
 
 	videoSeq.video_sequence();
 

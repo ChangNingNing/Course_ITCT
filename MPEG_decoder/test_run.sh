@@ -10,3 +10,4 @@ do
 	echo ${film}
 	time ${exe} ${dir}${film}
 done
+

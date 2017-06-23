@@ -23,13 +23,17 @@ class Macroblock {
 		Macroblock(InBit& x, const bool& d, Block& b, Image& i);
 		~Macroblock();
 		void decoder(	const int& picture_coding_type,
+						const int& full_pel_forward_vector, const int& full_pel_backward_vector,
 						const int& forward_f, const int& forward_r_size,
 						const int& backward_f, const int& backward_r_size,
+						int& recon_right_for_prev, int& recon_down_for_prev,
+						int& recon_right_back_prev, int& recon_down_back_prev,
 						int& quantizer_scale,
 						int& dct_dc_y_past, int& dct_dc_cb_past, int& dct_dc_cr_past,
 						int& past_intra_address, int& previous_macroblock_address,
 						const int& mb_width,
-						const int* intra_quant, const int* non_intra_quant);
+						const int* intra_quant, const int* non_intra_quant,
+						const int& forward_image_addr, const int& backward_image_addr, const int& cur_image_addr);
 	private:
 		const bool& DEBUG;
 		InBit& inBit;
@@ -39,6 +43,11 @@ class Macroblock {
 		/* Intra-macroblock Decoder */
 		int dct_zz[64];
 		int dct_recon[8][8];
+		/* Reconstruct motion vector */
+		int recon_right_for;
+		int recon_down_for;
+		int recon_right_back;
+		int recon_down_back;
 
 		/* function */
 		int find_macroblock_address_increment();
@@ -47,6 +56,19 @@ class Macroblock {
 		int find_macroblock_pattern();
 		void dct_recon_intra(	const int& bid, const int* intra_quant, const int& past_intra_address,
 								int& quantizer_scale, int& y_past, int& cb_past, int& cr_past);
+		void dct_recon_p(	const int& forward_addr, const int& bid, const int& mb_row, const int& mb_col,
+							const int* non_intra_quant, const int& quantizer_scale);
+		void dct_recon_b(	const int& forward_addr, const int& backward_addr, const int& bid,
+							const int& mb_row, const int& mb_col,
+							const int* non_intra_quant, const int& quantizer_scale);
+		void dct_recon_skipped_p(const int& cur_addr, const int& forward_addr, const int& mb_row, const int& mb_col);
+		void dct_recon_skipped_b(const int& forward_addr, const int& backward_addr, const int& cur_addr,
+									const int& mb_row, const int& mb_col,
+									const int* non_intra_quant, const int& quantizer_scale);
+		void recon_motion_vector_forward(	const int& forward_f, const int& full_pel_forward_vector,
+											int& recon_right_for_prev, int& recon_down_for_prev);
+		void recon_motion_vector_backward(	const int& backward_f, const int& full_pel_backward_vector,
+											int& recon_right_back_prev, int& recon_down_back_prev);
 
 		/* syntax codes */
 

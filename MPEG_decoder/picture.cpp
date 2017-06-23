@@ -3,15 +3,18 @@
 #include "slice.h"
 #include "image.h"
 #include <string.h>
+#include <stdlib.h>
 
 Picture::Picture(InBit& x, const bool& d, Slice& s, Image& i): inBit(x), DEBUG(d), slice(s), image(i) {
 	picture_num = 0;
+	output_num = 0;
 }
 
 Picture::~Picture() {}
 
 void Picture::decoder(	const int& horizontal_size, const int& vertical_size, const int& mb_width,
-						const int *intra_quant, const int *non_intra_quant) {
+						const int *intra_quant, const int *non_intra_quant,
+						int& forward_image_addr, int& backward_image_addr) {
 	picture_num++;
 	/*  */
 
@@ -71,16 +74,37 @@ void Picture::decoder(	const int& horizontal_size, const int& vertical_size, con
 		printf("	extra_bit_picture: %d\n", extra_bit_picture);
 	}
 
+	int cur_image_addr;
+	// I, P frame
+	if (picture_coding_type == 1 || picture_coding_type == 2){
+		forward_image_addr ^= 1;
+		backward_image_addr ^= 1;
+		cur_image_addr = backward_image_addr;
+	}
+	else {
+		cur_image_addr = 2;
+	}
+
 	do {
 		slice.decoder(	picture_coding_type,
+						full_pel_forward_vector, full_pel_backward_vector,
 						forward_f, forward_r_size,
 						backward_f, backward_r_size,
 						mb_width,
-						intra_quant, non_intra_quant);
+						intra_quant, non_intra_quant,
+						forward_image_addr, backward_image_addr, cur_image_addr);
 	} while (inBit.nextbits() >= 0x00000101 && inBit.nextbits() <= 0x000001AF);
 	// slice_start_codes are a range.
 
+	/* Output the image */
 	char fout[32];
-	sprintf(fout, "try%d.bmp", picture_num);
-	image.OutputBMP(vertical_size, horizontal_size, fout);
+	if ((picture_coding_type == 1 || picture_coding_type == 2) && picture_num != 1){
+		sprintf(fout, "mpeg%d.bmp", ++output_num);
+		image.outputBMP(forward_image_addr, vertical_size, horizontal_size, fout);
+	}
+	else if (picture_coding_type == 3){
+		sprintf(fout, "mpeg%d.bmp", ++output_num);
+		image.outputBMP(cur_image_addr, vertical_size, horizontal_size, fout);
+	}
+	/**/
 }

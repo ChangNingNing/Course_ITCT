@@ -5,50 +5,44 @@
 #include <stdlib.h>
 
 #define filter(x) ((x)>255? 255: (x)<0? 0: (x))
-int16_t Image::YUV[3][512][512];
-uint8_t Image::BGR[512*512*3];
+int16_t Image::image_buf[3][3][MAXL][MAXL];
+uint8_t Image::BGR[MAXL*MAXL*3];
 
 Image::Image(){}
 
 Image::~Image(){}
 
-void Image::InputYUV(const int& bid, const int& mb_row, const int& mb_col, const int block[8][8]){
-	int row = mb_row * 16;
-	int col = mb_col * 16;
+void Image::inputYUV(	const int& cur_addr, int bid,
+						const int& mb_row, const int& mb_col, const int block[8][8]){
+	int row, col, tid;
 	// Y
 	if (bid < 4){
-		row += (bid / 2) * 8;
-		col += (bid % 2) * 8;
-		for (int i=0; i<8; i++){
-			for (int j=0; j<8; j++){
-				YUV[0][row+i][col+j] = filter(block[i][j]);
-			}
-		}
+		row = (mb_row << 4) + ((bid >> 1) << 3);
+		col = (mb_col << 4) + ((bid &  1) << 3);
+		tid = 0;
 	}
 	// Cb, Cr
 	else {
-		int _id = bid-3;
-		for (int i=0; i<16; i+=2){
-			for (int j=0; j<16; j+=2){
-				YUV[_id][row+i+0][col+j+0] = filter(block[i/2][j/2]);
-				YUV[_id][row+i+0][col+j+1] = filter(block[i/2][j/2]);
-				YUV[_id][row+i+1][col+j+0] = filter(block[i/2][j/2]);
-				YUV[_id][row+i+1][col+j+1] = filter(block[i/2][j/2]);
-			}
-		}
+		row = mb_row << 3;
+		col = mb_col << 3;
+		tid = bid-3;
 	}
+
+	for (int i=0; i<8; i++)
+		for (int j=0; j<8; j++)
+			image_buf[cur_addr][tid][row+i][col+j] = block[i][j];
 }
 
-void Image::OutputBMP(const int& height, const int& width, const char* fout){
+void Image::outputBMP(int pid, const int& height, const int& width, const char* fout){
 	for (int i=0; i<height; i++){
 		for (int j=0; j<width; j++){
-			int _B = (i*512+j)*3 + 0;
-			int _G = (i*512+j)*3 + 1;
-			int _R = (i*512+j)*3 + 2;
+			int _B = (i*MAXL+j)*3 + 0;
+			int _G = (i*MAXL+j)*3 + 1;
+			int _R = (i*MAXL+j)*3 + 2;
 			float tmp[3];
-			float y  = YUV[0][i][j];
-			float cb = YUV[1][i][j]-128.0;
-			float cr = YUV[2][i][j]-128.0;
+			float y  = image_buf[pid][0][i][j];
+			float cb = image_buf[pid][1][i/2][j/2]-128.0;
+			float cr = image_buf[pid][2][i/2][j/2]-128.0;
 
 			tmp[0] = y + 1.772*cb;
 			tmp[1] = y - 0.34414*cb - 0.71414*cr;
@@ -61,7 +55,7 @@ void Image::OutputBMP(const int& height, const int& width, const char* fout){
 	}
 
 	/* write to .bmp */
-	uint8_t *buff = (uint8_t *)malloc(sizeof(uint8_t)*512*512*3);
+	uint8_t *buff = (uint8_t *)malloc(sizeof(uint8_t)*MAXL*MAXL*3);
 	uint8_t *ptr = buff;
 	int size = 0;
 
@@ -96,11 +90,11 @@ void Image::OutputBMP(const int& height, const int& width, const char* fout){
 
     int l = sizeof(uint8_t) * Wmax;
     for (int y = Hmax - 1; y>=0; y--){
-        if (size + l > 512 * 512 * 3){
+        if (size + l > MAXL*MAXL * 3){
             puts("output file is too large.");
 			exit(1);
         }
-        memcpy(ptr, &BGR[y*512*3], l);
+        memcpy(ptr, &BGR[y*MAXL*3], l);
         ptr += l, size += l;
     }
 
@@ -108,4 +102,5 @@ void Image::OutputBMP(const int& height, const int& width, const char* fout){
     if (!fptr) exit(1);
     fwrite(buff, sizeof(uint8_t), size, fptr);
     fclose(fptr);	
+	free(buff);
 }

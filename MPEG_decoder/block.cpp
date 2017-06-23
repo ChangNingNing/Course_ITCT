@@ -33,7 +33,7 @@ Block::Block(InBit& x, const bool& d): inBit(x), DEBUG(d){
 		dct_chrominance_VLC_code[Key(0b1111110, 7)] = 7;
 		dct_chrominance_VLC_code[Key(0b11111110, 8)] = 8;
 	}
-	/* dct_chrominance VLC code */
+	/* dct_coeff VLC code */
 	if (dct_coeff_VLC_code.empty()){
 		dct_coeff_VLC_code[Key(0b10, 2)] = Key(-1, 0); // end_of_block
 		dct_coeff_VLC_code[Key(0b1, 1)] = Key(0, 1); // dct_coeff_first
@@ -69,6 +69,7 @@ Block::Block(InBit& x, const bool& d): inBit(x), DEBUG(d){
 		dct_coeff_VLC_code[Key(0b0000001110, 10)] = Key(14, 1);
 		dct_coeff_VLC_code[Key(0b0000001101, 10)] = Key(15, 1);
 		dct_coeff_VLC_code[Key(0b0000001000, 10)] = Key(16, 1);
+
 		dct_coeff_VLC_code[Key(0b000000011101, 12)] = Key(0, 8);
 		dct_coeff_VLC_code[Key(0b000000011000, 12)] = Key(0, 9);
 		dct_coeff_VLC_code[Key(0b000000010011, 12)] = Key(0, 10);
@@ -101,6 +102,7 @@ Block::Block(InBit& x, const bool& d): inBit(x), DEBUG(d){
 		dct_coeff_VLC_code[Key(0b0000000011101, 13)] = Key(24, 1);
 		dct_coeff_VLC_code[Key(0b0000000011100, 13)] = Key(25, 1);
 		dct_coeff_VLC_code[Key(0b0000000011011, 13)] = Key(26, 1);
+
 		dct_coeff_VLC_code[Key(0b00000000011111, 14)] = Key(0, 16);
 		dct_coeff_VLC_code[Key(0b00000000011110, 14)] = Key(0, 17);
 		dct_coeff_VLC_code[Key(0b00000000011101, 14)] = Key(0, 18);
@@ -155,8 +157,7 @@ Block::Block(InBit& x, const bool& d): inBit(x), DEBUG(d){
 Block::~Block(){}
 
 void Block::decoder(const int& bid,
-					const int& picture_coding_type, const int *pattern_code,
-					const int& macroblock_intra,
+					const int& picture_coding_type, const int& macroblock_intra,
 					int *dct_zz){
 	dct_zz_i = 0;
 	/*  */
@@ -165,21 +166,20 @@ void Block::decoder(const int& bid,
 		printf("		==BLOCK(%d)==\n", bid);
 	}
 
-	if (pattern_code[bid]){
-		if (macroblock_intra){
-			if (bid < 4) find_dct_dc_size_luminance(dct_zz);
-			else find_dct_dc_size_chrominance(dct_zz);
-		}
-		else {
-			find_dct_coeff_first(dct_zz);
-		}
-		if (picture_coding_type != 4){
-			while (((inBit.nextbits() >> 30) & 0b11) != 0b10){
-				find_dct_coeff_next(dct_zz);
-			}
-			end_of_block = inBit.getBits(2);
-		}
+	if (macroblock_intra){
+		if (bid < 4) find_dct_dc_size_luminance(dct_zz);
+		else find_dct_dc_size_chrominance(dct_zz);
 	}
+	else {
+			find_dct_coeff_first(dct_zz);
+	}
+	if (picture_coding_type != 4){
+		while (((inBit.nextbits() >> 30) & 0b11) != 0b10){
+			find_dct_coeff_next(dct_zz);
+		}
+		end_of_block = inBit.getBits(2);
+	}
+
 	if (DEBUG){
 		printf("			EOB\n");
 	}
@@ -197,7 +197,7 @@ void Block::find_dct_dc_size_luminance(int *dct_zz){
 		}
 	}
 
-	if (tmp != 0){
+	if (tmp > 0){
 		dct_dc_differential = inBit.getBits(tmp);
 		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[dct_zz_i] = dct_dc_differential;
 		else dct_zz[dct_zz_i] = (-1 << tmp) | (dct_dc_differential+1);
@@ -224,7 +224,7 @@ void Block::find_dct_dc_size_chrominance(int *dct_zz){
 		}
 	}
 
-	if (tmp != 0){
+	if (tmp > 0){
 		dct_dc_differential = inBit.getBits(tmp);
 		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[dct_zz_i] = dct_dc_differential;
 		else dct_zz[dct_zz_i] = (-1 << tmp) | (dct_dc_differential+1);

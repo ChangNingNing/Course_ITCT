@@ -10,13 +10,15 @@ class Picture {
 		Picture(InBit& x, const bool& d, Slice& s, Image& i);
 		~Picture();
 		void decoder(	const int& horizontal_size, const int& vertical_size, const int& mb_width,
-						const int* intra_quant, const int* non_intra_quant);
+						const int* intra_quant, const int* non_intra_quant,
+						int& forward_image_addr, int& backward_image_addr);
 	private:
 		const bool& DEBUG;
 		InBit &inBit;
 		Slice& slice;
 		Image& image;
 		int picture_num;
+		int output_num;
 
 		/* syntax codes */
 		const static int picture_start_code = 0x00000100;

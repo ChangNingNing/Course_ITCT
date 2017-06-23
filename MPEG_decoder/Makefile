@@ -1,5 +1,5 @@
 COMPILER=g++
-GXXFLAG=-std=c++11 -O2
+GXXFLAG=-std=c++11 -O2 -d3
 OFILE=main.o bit.o video_seq.o picture.o slice.o macroblock.o block.o image.o
 
 all: MPEG_decoder

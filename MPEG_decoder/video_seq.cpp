@@ -1,11 +1,12 @@
 #include "video_seq.h"
 #include "bit.h"
 #include "picture.h"
+#include "image.h"
 #include <iostream>
 
 using namespace std;
 
-VideoSeq::VideoSeq(InBit& x, const bool& d, Picture& p): inBit(x), DEBUG(d), picture(p){}
+VideoSeq::VideoSeq(InBit& x, const bool& d, Picture& p, Image& i): inBit(x), DEBUG(d), picture(p), image(i){}
 
 VideoSeq::~VideoSeq() {}
 
@@ -16,6 +17,11 @@ void VideoSeq::video_sequence() {
 		do {
 			group_of_pictures();
 		} while (inBit.nextbits() == group_start_code);
+
+		// output the last image
+		char fout[32];
+		sprintf(fout, "mpeg%d.bmp", 120);
+		image.outputBMP(backward_image_addr, vertical_size, horizontal_size, fout);
 	} while (inBit.nextbits() == sequence_header_code);
 
 	int ret = inBit.getBits(32);
@@ -75,6 +81,10 @@ void VideoSeq::sequence_header() {
 		}
 		inBit.next_start_code();
 	}
+
+	/*  */
+	forward_image_addr = 0;
+	backward_image_addr = 1;
 
 /*
 	if (DEBUG){
@@ -148,7 +158,8 @@ void VideoSeq::group_of_pictures() {
 
 	do {
 		picture.decoder(horizontal_size, vertical_size, mb_width,
-						intra_quantizer_matrix, non_intra_quantizer_matrix);
+						intra_quantizer_matrix, non_intra_quantizer_matrix,
+						forward_image_addr, backward_image_addr);
 	} while (inBit.nextbits() == picture_start_code);
 }
 
