@@ -7,8 +7,11 @@
 #define filter(x) ((x)>255? 255: (x)<0? 0: (x))
 int16_t Image::image_buf[3][3][MAXL][MAXL];
 uint8_t Image::BGR[MAXL*MAXL*3];
+Frame Image::frame[512];
 
-Image::Image(){}
+Image::Image(){
+	frameNum = 0;
+}
 
 Image::~Image(){}
 
@@ -31,6 +34,21 @@ void Image::inputYUV(	const int& cur_addr, int bid,
 	for (int i=0; i<8; i++)
 		for (int j=0; j<8; j++)
 			image_buf[cur_addr][tid][row+i][col+j] = block[i][j];
+}
+
+void Image::outputFrame(int pid, const int& height, const int& width){
+	// Y
+	for (int i=0; i<height; i++)
+		for (int j=0; j<width; j++)
+			frame[frameNum].y[i][j] = image_buf[pid][0][i][j];
+	// Cb, Cr
+	for (int i=0; i<height/2; i++){
+		for (int j=0; j<width/2; j++){
+			frame[frameNum].cb[i][j] = image_buf[pid][1][i][j];
+			frame[frameNum].cr[i][j] = image_buf[pid][2][i][j];
+		}
+	}
+	frameNum++;
 }
 
 void Image::outputBMP(int pid, const int& height, const int& width, const char* fout){

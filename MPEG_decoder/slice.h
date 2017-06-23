@@ -37,7 +37,7 @@ class Slice {
 
 		/* slice info. */
 		int slice_start_code;
-		int slice_vertical_position;
+		unsigned int slice_vertical_position;
 		int quantizer_scale;
 		int extra_bit_slice;
 		int extra_information_slice;

@@ -32,10 +32,10 @@ class Picture {
 		int vbv_delay;
 		int full_pel_forward_vector;
 		int full_pel_backward_vector;
-		int forward_f_code;
+		unsigned int forward_f_code;
 		int forward_r_size;
 		int forward_f;
-		int backward_f_code;
+		unsigned int backward_f_code;
 		int backward_r_size;
 		int backward_f;
 		int extra_bit_picture;

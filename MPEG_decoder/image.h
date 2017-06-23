@@ -26,15 +26,24 @@ typedef struct{
 
 } BmpImageInfo;
 
+typedef struct {
+	int16_t y[MAXL][MAXL];
+	int16_t cb[MAXL/2][MAXL/2];
+	int16_t cr[MAXL/2][MAXL/2];
+} Frame;
+
 
 class Image {
 	public:
 		Image();
 		~Image();
 		void inputYUV(const int& cur_addr, int bid, const int& mb_row, const int& mb_col, const int block[8][8]);
+		void outputFrame(int pid, const int& height, const int& width);
 		void outputBMP(int pid, const int& height, const int& width, const char* fout);
 
 		static int16_t image_buf[3][3][MAXL][MAXL];
+		static Frame frame[512];
+		uint32_t frameNum;
 	private:
 		static uint8_t BGR[MAXL*MAXL*3];
 };

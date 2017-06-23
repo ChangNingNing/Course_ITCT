@@ -39,7 +39,6 @@ void Slice::decoder(const int& picture_coding_type,
 
 	if (DEBUG){
 		printf("==SLICE_START_CODE== -> %08x\n", slice_start_code);
-//		printf("slice_vertical_position %d\n", slice_vertical_position);
 		printf("	quantizer_scale: %d\n", quantizer_scale);
 		printf("	extra_bit_slice: %d\n", extra_bit_slice);
 	}

@@ -65,12 +65,10 @@ void Picture::decoder(	const int& horizontal_size, const int& vertical_size, con
 			printf("	full_pel_forward_vector: %d\n", full_pel_forward_vector);
 			printf("	forward_f_code: %d\n", forward_f_code);
 		}
-//		printf("forward_f_code %d\n", forward_f_code);
-//		printf("forward_r_size %d\n", forward_r_size);
-//		printf("forward_f %d\n", forward_f);
-//		printf("backward_f_code %d\n", backward_f_code);
-//		printf("backward_r_size %d\n", backward_r_size);
-//		printf("backward_f %d\n", backward_f);
+		if (picture_coding_type == 3){
+			printf("	full_pel_backward_vector: %d\n", full_pel_backward_vector);
+			printf("	backward_f_code: %d\n", backward_f_code);
+		}
 		printf("	extra_bit_picture: %d\n", extra_bit_picture);
 	}
 
@@ -99,12 +97,14 @@ void Picture::decoder(	const int& horizontal_size, const int& vertical_size, con
 	/* Output the image */
 	char fout[32];
 	if ((picture_coding_type == 1 || picture_coding_type == 2) && picture_num != 1){
-		sprintf(fout, "mpeg%d.bmp", ++output_num);
+		sprintf(fout, "mpeg%d.bmp", image.frameNum);
 		image.outputBMP(forward_image_addr, vertical_size, horizontal_size, fout);
+		image.outputFrame(forward_image_addr, vertical_size, horizontal_size);
 	}
 	else if (picture_coding_type == 3){
-		sprintf(fout, "mpeg%d.bmp", ++output_num);
+		sprintf(fout, "mpeg%d.bmp", image.frameNum);
 		image.outputBMP(cur_image_addr, vertical_size, horizontal_size, fout);
+		image.outputFrame(cur_image_addr, vertical_size, horizontal_size);
 	}
 	/**/
 }

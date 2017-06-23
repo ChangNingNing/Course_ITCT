@@ -20,8 +20,9 @@ void VideoSeq::video_sequence() {
 
 		// output the last image
 		char fout[32];
-		sprintf(fout, "mpeg%d.bmp", 120);
+		sprintf(fout, "mpeg%d.bmp", image.frameNum);
 		image.outputBMP(backward_image_addr, vertical_size, horizontal_size, fout);
+		image.outputFrame(backward_image_addr, vertical_size, horizontal_size);
 	} while (inBit.nextbits() == sequence_header_code);
 
 	int ret = inBit.getBits(32);
@@ -171,4 +172,23 @@ void VideoSeq::load_default_intra_quantizer_matrix(){
 void VideoSeq::load_default_non_intra_quantizer_matrix(){
 	for (int i=0; i<64; i++)
 		non_intra_quantizer_matrix[i] = default_non_intra_quantizer_matrix[i];
+}
+
+int VideoSeq::width(){
+	return horizontal_size;
+}
+
+int VideoSeq::height(){
+	return vertical_size;
+}
+
+float VideoSeq::p_rate(){
+	return table_picture_rate[picture_rate];
+}
+
+Frame* VideoSeq::get_frame(int num){
+	if (image.frameNum != 0)
+		return &(image.frame[num % image.frameNum]);
+	else
+		return &(image.frame[0]);
 }

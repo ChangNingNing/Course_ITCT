@@ -159,19 +159,18 @@ Block::~Block(){}
 void Block::decoder(const int& bid,
 					const int& picture_coding_type, const int& macroblock_intra,
 					int *dct_zz){
-	dct_zz_i = 0;
-	/*  */
 
 	if (DEBUG){
 		printf("		==BLOCK(%d)==\n", bid);
 	}
 
 	if (macroblock_intra){
+		dct_zz_i = 0;
 		if (bid < 4) find_dct_dc_size_luminance(dct_zz);
 		else find_dct_dc_size_chrominance(dct_zz);
 	}
 	else {
-			find_dct_coeff_first(dct_zz);
+		find_dct_coeff_first(dct_zz);
 	}
 	if (picture_coding_type != 4){
 		while (((inBit.nextbits() >> 30) & 0b11) != 0b10){
@@ -199,11 +198,11 @@ void Block::find_dct_dc_size_luminance(int *dct_zz){
 
 	if (tmp > 0){
 		dct_dc_differential = inBit.getBits(tmp);
-		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[dct_zz_i] = dct_dc_differential;
-		else dct_zz[dct_zz_i] = (-1 << tmp) | (dct_dc_differential+1);
+		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[0] = dct_dc_differential;
+		else dct_zz[0] = (-1 << tmp) | (dct_dc_differential+1);
 	}
 	else{
-		dct_zz[dct_zz_i] = 0;
+		dct_zz[0] = 0;
 	}
 
 	if (DEBUG){
@@ -226,11 +225,11 @@ void Block::find_dct_dc_size_chrominance(int *dct_zz){
 
 	if (tmp > 0){
 		dct_dc_differential = inBit.getBits(tmp);
-		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[dct_zz_i] = dct_dc_differential;
-		else dct_zz[dct_zz_i] = (-1 << tmp) | (dct_dc_differential+1);
+		if (dct_dc_differential & (1 << (tmp-1))) dct_zz[0] = dct_dc_differential;
+		else dct_zz[0] = (-1 << tmp) | (dct_dc_differential+1);
 	}
 	else{
-		dct_zz[dct_zz_i] = 0;
+		dct_zz[0] = 0;
 	}
 
 	if (DEBUG){
@@ -269,6 +268,10 @@ void Block::find_dct_coeff_first(int *dct_zz){
 		else{
 			level = (level<<1 | inBit.getBits(8)) << 23 >> 23;
 		}
+	}
+	else { // not found, decoded error.
+		puts("dct_coeff_first decoded error.");
+		return;
 	}
 
 	dct_zz_i = run;

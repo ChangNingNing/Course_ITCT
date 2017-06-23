@@ -1,8 +1,11 @@
 COMPILER=g++
-GXXFLAG=-std=c++11 -O2 -d3
+GXXFLAG=-std=c++11 -O2
 OFILE=main.o bit.o video_seq.o picture.o slice.o macroblock.o block.o image.o
+UI_OFILE=bit.o video_seq.o picture.o slice.o macroblock.o block.o image.o
 
-all: MPEG_decoder
+all: MPEG_decoder GUI
+
+
 
 main: main.cpp
 	$(COMPILER) $(GXXFLAG) main.cpp -c
@@ -31,5 +34,8 @@ image: image.cpp
 MPEG_decoder: main.o bit.o video_seq.o picture.o slice.o macroblock.o block.o image.o
 	$(COMPILER) $(GXXFLAG) $(OFILE) -o MPEG_decoder
 
+GUI:
+	$(COMPILER) -O2 gui.cpp $(UI_OFILE) -o MPEG_player -lgdi32 -lkernel32
+
 clean:
-	rm *.o MPEG_decoder *.bmp
+	rm *.o MPEG_decoder MPEG_player *.bmp

@@ -44,8 +44,12 @@ class VideoSeq {
 		VideoSeq(InBit& x, const bool& d, Picture& p, Image& i);
 		~VideoSeq();
 		void video_sequence();
-		void width();
-		void height();
+
+		/* for GUI function */
+		int width();
+		int height();
+		float p_rate();
+		Frame* get_frame(int num);
 	private:
 		const bool& DEBUG;
 		InBit &inBit;

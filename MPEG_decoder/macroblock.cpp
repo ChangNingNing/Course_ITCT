@@ -303,16 +303,20 @@ void Macroblock::decoder(	const int& picture_coding_type,
 			macroblock_address = previous_macroblock_address + i;
 			mb_row = macroblock_address / mb_width;
 			mb_column = macroblock_address % mb_width;
-			if (picture_coding_type == 2)
+			if (picture_coding_type == 2){
+				recon_right_for = 0;
+				recon_down_for = 0;
+
 				dct_recon_skipped_p(cur_addr, forward_addr, mb_row, mb_column);
-			else if (picture_coding_type == 3)
+
+				recon_right_for_prev = 0;
+				recon_down_for_prev = 0;
+			}
+			else if (picture_coding_type == 3){
 				dct_recon_skipped_b(forward_addr, backward_addr, cur_addr,
 									mb_row, mb_column, non_intra_quant, quantizer_scale);
+			}
 		}
-		recon_right_for_prev = 0;
-		recon_down_for_prev = 0;
-		recon_right_for = 0;
-		recon_down_for = 0;
 	}
 
 	macroblock_address = previous_macroblock_address + macroblock_address_increment;
@@ -332,8 +336,9 @@ void Macroblock::decoder(	const int& picture_coding_type,
 
 	if (macroblock_motion_forward){
 		motion_horizontal_forward_code = find_macroblock_motion_vector();
-		if (forward_f != 1 && motion_horizontal_forward_code != 0)
+		if (forward_f != 1 && motion_horizontal_forward_code != 0){
 			motion_horizontal_forward_r = inBit.getBits(forward_r_size);
+		}
 
 		motion_vertical_forward_code = find_macroblock_motion_vector();
 		if (forward_f != 1 && motion_vertical_forward_code != 0)
@@ -361,37 +366,35 @@ void Macroblock::decoder(	const int& picture_coding_type,
 	}
 
 	/* Reconstruct the motion vector horizontal and vertical components */
-	// P, B frame
-	if (picture_coding_type == 2 || picture_coding_type == 3){
-		if (macroblock_motion_forward){
-			recon_motion_vector_forward(forward_f, full_pel_forward_vector,
-										recon_right_for_prev, recon_down_for_prev);
-		}
-		else {
+	if (macroblock_motion_forward){
+		recon_motion_vector_forward(forward_f, full_pel_forward_vector,
+									recon_right_for_prev, recon_down_for_prev);
+	}
+	else{
+		if (picture_coding_type == 2){
 			recon_right_for = 0;
 			recon_down_for = 0;
 			recon_right_for_prev = 0;
 			recon_down_for_prev = 0;
 		}
-	}
-	// B frame
-	if (picture_coding_type == 3){
-		if (macroblock_motion_backward){
-			recon_motion_vector_backward(backward_f, full_pel_backward_vector,
-										recon_right_for_prev, recon_down_for_prev);
+		else if (picture_coding_type == 3){
+			recon_right_for = recon_right_for_prev;
+			recon_down_for = recon_down_for_prev;
 		}
-		else {
-			recon_right_back = 0;
-			recon_down_back = 0;
-			recon_right_back_prev = 0;
-			recon_down_back_prev = 0;
+	}
+	if (macroblock_motion_backward){
+		recon_motion_vector_backward(backward_f, full_pel_backward_vector,
+									recon_right_back_prev, recon_down_back_prev);
+	}
+	else {
+		if(picture_coding_type == 3){
+			recon_right_back = recon_right_back_prev;
+			recon_down_back = recon_down_back_prev;
 		}
 	}
 
 	if (DEBUG){
 		printf("	==MACROBLOCK()==\n");
-//		printf("macroblock_stuffing %d\n", macroblock_stuffing);
-//		printf("macroblock_escape %d\n", macroblock_escape);
 		printf("		macroblock_address_increment: %d\n", macroblock_address_increment);
 		printf("		macroblock_type: %d\n", macroblock_type);
 		printf("			macroblock_quant: %d\n", macroblock_quant);
@@ -404,18 +407,16 @@ void Macroblock::decoder(	const int& picture_coding_type,
 		}
 		if (macroblock_motion_forward){
 			printf("		motion_horizontal_forward_code: %d\n", motion_horizontal_forward_code);
-//			printf("		motion_horizontal_forward_r %d\n", motion_horizontal_forward_r);
 			printf("		motion_vertical_forward_code: %d\n", motion_vertical_forward_code);
-//			printf("		motion_vertical_forward_r %d\n", motion_vertical_backward_r);
 		}
 		if (macroblock_motion_backward){
-			printf("		motion_horizontal_backward_code:  %d\n", motion_horizontal_backward_code);
-//			printf("		motion_horizontal_backward_r: %d\n", motion_horizontal_backward_r);
+			printf("		motion_horizontal_backward_code: %d\n", motion_horizontal_backward_code);
 			printf("		motion_vertical_backward_code: %d\n", motion_vertical_backward_code);
-//			printf("		motion_vertical_backward_r: %d\n", motion_vertical_backward_r);
 		}
-		if (macroblock_motion_forward || macroblock_pattern)
+		if (macroblock_motion_forward)
 			printf("		ForMV(%d,%d)\n", recon_right_for, recon_down_for);
+		if (macroblock_motion_backward)
+			printf("		BackMV(%d,%d)\n", recon_right_back, recon_down_back);
 		if (macroblock_pattern)
 			printf("		coded_block_pattern: %d\n", coded_block_pattern);
 	}
@@ -425,10 +426,14 @@ void Macroblock::decoder(	const int& picture_coding_type,
 		if (pattern_code[i])
 			block.decoder(i, picture_coding_type, macroblock_intra, dct_zz);
 
-		// I frame
-		if (picture_coding_type == 1){
+		// Intra frame
+		if (macroblock_intra){
 			dct_recon_intra(i, intra_quant, past_intra_address,
 							quantizer_scale, dct_dc_y_past, dct_dc_cb_past, dct_dc_cr_past);
+			recon_right_back_prev = 0;
+			recon_down_back_prev = 0;
+			recon_right_for_prev = 0;
+			recon_down_for_prev = 0;
 		}
 		// P frame
 		else if (picture_coding_type == 2){
@@ -441,7 +446,7 @@ void Macroblock::decoder(	const int& picture_coding_type,
 		image.inputYUV(cur_addr, i, mb_row, mb_column, dct_recon);
 	}
 
-	if (picture_coding_type == 1){
+	if (macroblock_intra){
 		past_intra_address = macroblock_address;
 	}
 
@@ -734,33 +739,37 @@ void Macroblock::dct_recon_b(const int& forward_addr, const int& backward_addr, 
 	}
 	if (macroblock_motion_backward){
 		num++;
+		int tmp;
 		if (!right_half_back && !down_half_back){
 			for (int i=0; i<8; i++) for (int j=0; j<8; j++){
-					pel[i][j] += image.image_buf[backward_addr][tid][row+i+down_back][col+j+right_back];
-					pel[i][j] = CeilDiv(pel[i][j], num);
+					tmp = 	image.image_buf[backward_addr][tid][row+i + down_back+0][col+j + right_back];
+					pel[i][j] = CeilDiv(tmp + pel[i][j], num);
 			}
 		}
 		else if (!right_half_back && down_half_back){
 			for (int i=0; i<8; i++) for (int j=0; j<8; j++){
-					pel[i][j] +=(image.image_buf[backward_addr][tid][row+i+down_back][col+j+right_back] + 
-								image.image_buf[backward_addr][tid][row+i+down_back+1][col+j+right_back])/2;
-					pel[i][j] = CeilDiv(pel[i][j], num);
+					tmp = 	image.image_buf[backward_addr][tid][row+i + down_back+0][col+j + right_back] + 
+							image.image_buf[backward_addr][tid][row+i + down_back+1][col+j + right_back];
+					tmp = CeilDiv(tmp, 2);
+					pel[i][j] = CeilDiv(tmp + pel[i][j], num);
 			}
 		}
 		else if (right_half_back && !down_half_back){
 			for (int i=0; i<8; i++) for (int j=0; j<8; j++){
-					pel[i][j] +=(image.image_buf[backward_addr][tid][row+i+down_back][col+j+right_back] + 
-								image.image_buf[backward_addr][tid][row+i+down_for][col+j+right_back+1])/2;
-					pel[i][j] = CeilDiv(pel[i][j], num);
+					tmp =	image.image_buf[backward_addr][tid][row+i + down_back+0][col+j + right_back] + 
+							image.image_buf[backward_addr][tid][row+i + down_back+0][col+j + right_back+1];
+					tmp = CeilDiv(tmp, 2);
+					pel[i][j] = CeilDiv(tmp + pel[i][j], num);
 			}
 		}
 		else {
 			for (int i=0; i<8; i++) for (int j=0; j<8; j++){
-					pel[i][j] +=(image.image_buf[backward_addr][tid][row+i+down_back][col+j+right_back] + 
-								image.image_buf[forward_addr][tid][row+i+down_back+1][col+j+right_back] +
-								image.image_buf[forward_addr][tid][row+i+down_back][col+j+right_back+1]+
-								image.image_buf[forward_addr][tid][row+i+down_back+1][col+j+right_back+1])/4;
-					pel[i][j] = CeilDiv(pel[i][j], 4);
+					tmp =	image.image_buf[backward_addr][tid][row+i + down_back][col+j + right_back] + 
+							image.image_buf[backward_addr][tid][row+i + down_back+1][col+j +right_back] +
+							image.image_buf[backward_addr][tid][row+i + down_back][col+j + right_back+1]+
+							image.image_buf[backward_addr][tid][row+i + down_back+1][col+j + right_back+1];
+					tmp = CeilDiv(tmp, 4);
+					pel[i][j] = CeilDiv(tmp + pel[i][j], num);
 			}
 		}
 	}
@@ -824,15 +833,19 @@ void Macroblock::recon_motion_vector_forward(	const int& forward_f, const int& f
 	int complement_horizontal_forward_r;
 	int complement_vertical_forward_r;
 
-	if (forward_f == 1 || motion_horizontal_forward_code == 0)
+	if (forward_f == 1 || motion_horizontal_forward_code == 0){
 		complement_horizontal_forward_r = 0;
-	else
+	}
+	else{
 		complement_horizontal_forward_r = forward_f - 1 - motion_horizontal_forward_r;
+	}
 
-	if (forward_f == 1 || motion_vertical_forward_code == 0)
+	if (forward_f == 1 || motion_vertical_forward_code == 0){
 		complement_vertical_forward_r = 0;
-	else
+	}
+	else{
 		complement_vertical_forward_r = forward_f - 1 - motion_vertical_forward_r;
+	}
 
 	int right_little = motion_horizontal_forward_code * forward_f;
 	int right_big;
@@ -874,20 +887,17 @@ void Macroblock::recon_motion_vector_forward(	const int& forward_f, const int& f
 		recon_right_for = new_vector;
 	else
 		recon_right_for = recon_right_for_prev + right_big;
+	recon_right_for_prev = recon_right_for;
+	if (full_pel_forward_vector) recon_right_for = recon_right_for << 1;
 
 	new_vector = recon_down_for_prev + down_little;
 	if (new_vector <= max && new_vector >= min)
 		recon_down_for = new_vector;
 	else
 		recon_down_for = recon_down_for_prev + down_big;
-
-	recon_right_for_prev = recon_right_for;
 	recon_down_for_prev = recon_down_for;
 
-	if (full_pel_forward_vector){
-		recon_down_for <<= 1;
-		recon_right_for <<= 1;
-	}
+	if (full_pel_forward_vector) recon_down_for = recon_down_for << 1;
 }
 
 void Macroblock::recon_motion_vector_backward(	const int& backward_f, const int& full_pel_backward_vector,
@@ -945,18 +955,14 @@ void Macroblock::recon_motion_vector_backward(	const int& backward_f, const int&
 		recon_right_back = new_vector;
 	else
 		recon_right_back = recon_right_back_prev + right_big;
+	recon_right_back_prev = recon_right_back;
+	if (full_pel_backward_vector) recon_right_back = recon_right_back << 1;
 
 	new_vector = recon_down_back_prev + down_little;
 	if (new_vector <= max && new_vector >= min)
 		recon_down_back = new_vector;
 	else
 		recon_down_back = recon_down_back_prev + down_big;
-
-	recon_right_back_prev = recon_right_back;
 	recon_down_back_prev = recon_down_back;
-
-	if (full_pel_backward_vector){
-		recon_down_back <<= 1;
-		recon_right_back <<= 1;
-	}
+	if (full_pel_backward_vector) recon_down_back = recon_down_back << 1;
 }
