@@ -5,6 +5,7 @@
 #include <iostream>
 
 using namespace std;
+bool isWait = false;
 
 VideoSeq::VideoSeq(InBit& x, const bool& d, Picture& p, Image& i): inBit(x), DEBUG(d), picture(p), image(i){}
 
@@ -160,6 +161,8 @@ void VideoSeq::group_of_pictures() {
 */
 
 	do {
+		while (isWait)
+			;
 		picture.decoder(horizontal_size, vertical_size, mb_width,
 						intra_quantizer_matrix, non_intra_quantizer_matrix,
 						forward_image_addr, backward_image_addr);
@@ -188,11 +191,22 @@ float VideoSeq::p_rate(){
 	return table_picture_rate[picture_rate];
 }
 
-Frame* VideoSeq::get_frame(int num){
-	if (num < image.frameNum)
-		return &(image.frame[num % 120]);
-	else if (num == 0)
-		return &(image.frame[0]);
+Frame* VideoSeq::get_frame(int& num){
+	if (num < image.frameNum){
+		int tmpNum = num % MAXF;
+		int tmpF = image.frameNum % MAXF;
+		tmpF = tmpF > tmpNum? tmpF - MAXF: tmpF;
+		if (tmpNum - tmpF < 10)
+			isWait = true;
+		else
+			isWait = false;
+
+		return &(image.frame[tmpNum]);
+	}
+//	else if (num < 10){
+//		num = -1;
+//		return &(image.frame[0]);
+//	}
 	else
 		return NULL;
 }

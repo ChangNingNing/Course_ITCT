@@ -80,7 +80,8 @@ void frame_update(HWND hwnd, int start_time) {
     ClientResize(hwnd, width, height);
 
     // Retrieve next frame
-	Frame* frame = video->get_frame(frame_cnt++);
+	Frame* frame = video->get_frame(frame_cnt);
+	frame_cnt++;
 	if (frame == NULL){
 		if (isPlay){
 			cout << "Player: Display done." << endl;
@@ -178,9 +179,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         MessageBox(NULL, "Window Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
         return 0;
     }
+
+	// Let decodr has time to begin.
+	Sleep(300);
+
     ShowWindow(hwnd, nCmdShow); // show the window
     UpdateWindow(hwnd); // redraw
-     
+	
     int start_time = clock();
     while(1) {
         if(PeekMessage(&Msg, NULL, 0, 0, 0)) {  // non-blocking
@@ -190,7 +195,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             }
             else break;
         }
-        Sleep(1);
+		Sleep(1);
         frame_update(hwnd, start_time);
     }
     return Msg.wParam;

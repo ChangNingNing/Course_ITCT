@@ -5,8 +5,8 @@
 #include <stdlib.h>
 
 #define filter(x) ((x)>255? 255: (x)<0? 0: (x))
-int16_t Image::image_buf[3][3][MAXL][MAXL];
-uint8_t Image::BGR[MAXL*MAXL*3];
+int16_t Image::image_buf[3][3][MAXH][MAXW];
+uint8_t Image::BGR[MAXH*MAXW*3];
 Frame Image::frame[MAXF];
 
 Image::Image(){
@@ -38,32 +38,20 @@ void Image::inputYUV(	const int& cur_addr, int bid,
 
 void Image::outputFrame(int pid, const int& height, const int& width){
 	// Y
-	memcpy(frame[frameNum % MAXF].y, image_buf[pid][0], sizeof(int16_t)*MAXL*MAXL);
-	/*
-	for (int i=0; i<height; i++)
-		for (int j=0; j<width; j++)
-			frame[frameNum].y[i][j] = image_buf[pid][0][i][j];
-	*/
-	// Cb, Cr
-	memcpy(frame[frameNum % MAXF].cb, image_buf[pid][1], sizeof(int16_t)*MAXL*MAXL);
-	memcpy(frame[frameNum % MAXF].cr, image_buf[pid][2], sizeof(int16_t)*MAXL*MAXL);
-	/*
-	for (int i=0; i<height/2; i++){
-		for (int j=0; j<width/2; j++){
-			frame[frameNum].cb[i][j] = image_buf[pid][1][i][j];
-			frame[frameNum].cr[i][j] = image_buf[pid][2][i][j];
-		}
-	}
-	*/
+	memcpy(frame[frameNum % MAXF].y, image_buf[pid][0], sizeof(int16_t)*MAXH*MAXW);
+	// Cb
+	memcpy(frame[frameNum % MAXF].cb, image_buf[pid][1], sizeof(int16_t)*MAXH*MAXW/2);
+	// Cr
+	memcpy(frame[frameNum % MAXF].cr, image_buf[pid][2], sizeof(int16_t)*MAXH*MAXW/2);
 	frameNum++;
 }
 
 void Image::outputBMP(int pid, const int& height, const int& width, const char* fout){
 	for (int i=0; i<height; i++){
 		for (int j=0; j<width; j++){
-			int _B = (i*MAXL+j)*3 + 0;
-			int _G = (i*MAXL+j)*3 + 1;
-			int _R = (i*MAXL+j)*3 + 2;
+			int _B = (i*MAXW+j)*3 + 0;
+			int _G = (i*MAXW+j)*3 + 1;
+			int _R = (i*MAXW+j)*3 + 2;
 			float tmp[3];
 			float y  = image_buf[pid][0][i][j];
 			float cb = image_buf[pid][1][i/2][j/2]-128.0;
@@ -80,7 +68,7 @@ void Image::outputBMP(int pid, const int& height, const int& width, const char* 
 	}
 
 	/* write to .bmp */
-	uint8_t *buff = (uint8_t *)malloc(sizeof(uint8_t)*MAXL*MAXL*3);
+	uint8_t *buff = (uint8_t *)malloc(sizeof(uint8_t)*MAXH*MAXW*3);
 	uint8_t *ptr = buff;
 	int size = 0;
 
@@ -115,11 +103,11 @@ void Image::outputBMP(int pid, const int& height, const int& width, const char* 
 
     int l = sizeof(uint8_t) * Wmax;
     for (int y = Hmax - 1; y>=0; y--){
-        if (size + l > MAXL*MAXL * 3){
+        if (size + l > MAXH*MAXW*3){
             puts("output file is too large.");
 			exit(1);
         }
-        memcpy(ptr, &BGR[y*MAXL*3], l);
+        memcpy(ptr, &BGR[y*MAXW*3], l);
         ptr += l, size += l;
     }
 

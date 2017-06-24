@@ -49,7 +49,7 @@ class VideoSeq {
 		int width();
 		int height();
 		float p_rate();
-		Frame* get_frame(int num);
+		Frame* get_frame(int& num);
 	private:
 		const bool& DEBUG;
 		InBit &inBit;
