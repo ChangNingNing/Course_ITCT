@@ -19,9 +19,11 @@ void VideoSeq::video_sequence() {
 		} while (inBit.nextbits() == group_start_code);
 
 		// output the last image
+		/*
 		char fout[32];
 		sprintf(fout, "mpeg%d.bmp", image.frameNum);
 		image.outputBMP(backward_image_addr, vertical_size, horizontal_size, fout);
+		*/
 		image.outputFrame(backward_image_addr, vertical_size, horizontal_size);
 	} while (inBit.nextbits() == sequence_header_code);
 
@@ -187,8 +189,10 @@ float VideoSeq::p_rate(){
 }
 
 Frame* VideoSeq::get_frame(int num){
-	if (image.frameNum != 0)
-		return &(image.frame[num % image.frameNum]);
-	else
+	if (num < image.frameNum)
+		return &(image.frame[num % 120]);
+	else if (num == 0)
 		return &(image.frame[0]);
+	else
+		return NULL;
 }

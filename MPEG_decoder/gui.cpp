@@ -21,6 +21,7 @@ using namespace std;
 VideoSeq *video;
 const char g_szClassName[] = "MpegPlayer";
 int frame_cnt = 0;
+bool isPlay = false;
  
 void run_background(void* argv) {
 	char* filename = (char *)argv;
@@ -45,7 +46,8 @@ void run_background(void* argv) {
 	videoSeq.video_sequence();
 
 	fin.close();
-	while (1)
+	isPlay = true;
+	while (isPlay)
 		;
 }
  
@@ -79,6 +81,17 @@ void frame_update(HWND hwnd, int start_time) {
 
     // Retrieve next frame
 	Frame* frame = video->get_frame(frame_cnt++);
+	if (frame == NULL){
+		if (isPlay){
+			cout << "Player: Display done." << endl;
+			exit(0);
+		}
+		else {
+			cout << "Player: Decoder not realtime." << endl;
+			exit(0);
+		}
+	}
+	cout << "Player: " << frame_cnt << " frame." << endl;
     // Fill in to buffer (YCbCr->RGB)
     for(int m = 0; m < height; m++) {
         for(int n = 0; n < width; n++) {
@@ -94,7 +107,7 @@ void frame_update(HWND hwnd, int start_time) {
             buffer[m * width + n] = (R<<16)|(G<<8)|B;
         }
     }
-	
+
     // And set to HBITMAP
     SetBitmapBits(hbm, width * height * sizeof(int), buffer);
      

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #define MAXL 1024
+#define MAXF 120
 
 typedef struct{
 //  char identifier[2];
@@ -28,8 +29,8 @@ typedef struct{
 
 typedef struct {
 	int16_t y[MAXL][MAXL];
-	int16_t cb[MAXL/2][MAXL/2];
-	int16_t cr[MAXL/2][MAXL/2];
+	int16_t cb[MAXL][MAXL];
+	int16_t cr[MAXL][MAXL];
 } Frame;
 
 
@@ -42,7 +43,7 @@ class Image {
 		void outputBMP(int pid, const int& height, const int& width, const char* fout);
 
 		static int16_t image_buf[3][3][MAXL][MAXL];
-		static Frame frame[512];
+		static Frame frame[MAXF];
 		uint32_t frameNum;
 	private:
 		static uint8_t BGR[MAXL*MAXL*3];

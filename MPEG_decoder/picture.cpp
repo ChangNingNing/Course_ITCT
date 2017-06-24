@@ -97,13 +97,13 @@ void Picture::decoder(	const int& horizontal_size, const int& vertical_size, con
 	/* Output the image */
 	char fout[32];
 	if ((picture_coding_type == 1 || picture_coding_type == 2) && picture_num != 1){
-		sprintf(fout, "mpeg%d.bmp", image.frameNum);
-		image.outputBMP(forward_image_addr, vertical_size, horizontal_size, fout);
+		//sprintf(fout, "mpeg%d.bmp", image.frameNum);
+		//image.outputBMP(forward_image_addr, vertical_size, horizontal_size, fout);
 		image.outputFrame(forward_image_addr, vertical_size, horizontal_size);
 	}
 	else if (picture_coding_type == 3){
-		sprintf(fout, "mpeg%d.bmp", image.frameNum);
-		image.outputBMP(cur_image_addr, vertical_size, horizontal_size, fout);
+		//sprintf(fout, "mpeg%d.bmp", image.frameNum);
+		//image.outputBMP(cur_image_addr, vertical_size, horizontal_size, fout);
 		image.outputFrame(cur_image_addr, vertical_size, horizontal_size);
 	}
 	/**/
